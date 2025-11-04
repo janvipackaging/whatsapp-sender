@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Sender</title>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
+    nav { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
+    nav a { 
+      padding: 10px 15px; 
+      text-decoration: none; 
+      background-color: #007bff; 
+      color: white; 
+      border-radius: 5px; 
+      margin-right: 10px;
+    }
+    nav a:hover { background-color: #0056b3; }
+    h1 { color: #333; }
+    p { color: #555; font-size: 1.1em; }
+  </style>
+</head>
+<body>
+
+  <h1>Welcome to Your Bulk Sender</h1>
+  
+  <p><%= message %></p>
+  
+  <nav>
+    <a href="/contacts">Manage Contacts</a>
+    <a href="/campaigns">New Campaign</a>
+  </nav>
+
+</body>
+</html>
