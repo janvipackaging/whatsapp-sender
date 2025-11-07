@@ -7,10 +7,15 @@
   
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    form { background: #fff; border-radius: 8px; padding: 25px; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    h1, h2 { color: #333; }
+    a { color: #007bff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Form Styling */
+    form { background: #fff; border-radius: 8px; padding: 25px; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-    input[type="file"], select {
+    input[type="file"], input[type="text"], input[type="tel"], select {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
@@ -20,15 +25,18 @@
     button { 
       padding: 12px 20px; 
       text-decoration: none; 
-      background-color: #28a745; 
       color: white; 
       border-radius: 5px; 
       border: none;
       font-size: 1em;
       cursor: pointer;
     }
-    button:hover { background-color: #218838; }
-    a { color: #007bff; }
+    .btn-green { background-color: #28a745; }
+    .btn-green:hover { background-color: #218838; }
+    .btn-blue { background-color: #007bff; }
+    .btn-blue:hover { background-color: #0056b3; }
+    .btn-grey { background-color: #6c757d; }
+    .btn-grey:hover { background-color: #5a6268; }
   </style>
 </head>
 <body>
@@ -36,35 +44,85 @@
   <h1>Manage Contacts</h1>
   <p><a href="/">&larr; Back to Dashboard</a></p>
 
+  <h2>Import Contacts (CSV)</h2>
   <form action="/contacts/import" method="POST" enctype="multipart/form-data">
-    
     <div>
-      <label for="companyId">Select Company:</label>
-      <select name="companyId" id="companyId" required>
+      <label for="companyId-csv">Select Company:</label>
+      <select name="companyId" id="companyId-csv" required>
         <option value="">-- Please Select --</option>
         <% companies.forEach(function(company) { %>
           <option value="<%= company._id %>"><%= company.name %></option>
         <% }); %>
       </select>
     </div>
-
     <div>
-      <label for="segmentId">Add to Segment:</label>
-      <select name="segmentId" id="segmentId" required>
+      <label for="segmentId-csv">Add to Segment:</label>
+      <select name="segmentId" id="segmentId-csv" required>
         <option value="">-- Please Select --</option>
         <% segments.forEach(function(segment) { %>
           <option value="<%= segment._id %>"><%= segment.name %></option>
         <% }); %>
       </select>
     </div>
-
     <div>
       <label for="csvFile">Upload CSV File:</label>
       <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
     </div>
-    
-    <button type="submit">Import Contacts</button>
+    <button type="submit" class="btn-green">Import Contacts</button>
   </form>
 
-</body>
+  <h2>Add Single Contact</h2>
+  <form action="/contacts/add" method="POST">
+    <div>
+      <label for="name">Name (Optional):</label>
+      <input type="text" name="name" id="name" placeholder="e.g., Rohan Sharma">
+    </div>
+    <div>
+      <label for="phone">Phone Number:</label>
+      <input type="tel" name="phone" id="phone" placeholder="e.g., +919607732123" required>
+    </div>
+    <div>
+      <label for="companyId-single">Select Company:</label>
+      <select name="companyId" id="companyId-single" required>
+        <option value="">-- Please Select --</option>
+        <% companies.forEach(function(company) { %>
+          <option value="<%= company._id %>"><%= company.name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div>
+      <label for="segmentId-single">Add to Segment:</label>
+      <select name="segmentId" id="segmentId-single" required>
+        <option value="">-- Please Select --</option>
+        <% segments.forEach(function(segment) { %>
+          <option value="<%= segment._id %>"><%= segment.name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <button type="submit" class="btn-blue">Save Contact</button>
+  </form>
+
+  <h2>Export Contacts</h2>
+  <form action="/contacts/export" method="GET">
+    <div>
+      <label for="companyId-export">Select Company:</label>
+      <select name="companyId" id="companyId-export" required>
+        <option value="">-- Please Select --</option>
+        <% companies.forEach(function(company) { %>
+          <option value="<%= company._id %>"><%= company.name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div>
+      <label for="segmentId-export">Select Segment:</label>
+      <select name="segmentId" id="segmentId-export" required>
+        <option value="">-- Please Select --</option>
+        <% segments.forEach(function(segment) { %>
+          <option value="<%= segment._id %>"><%= segment.name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <button type="submit" class="btn-grey">Export Contacts</button>
+  </form>
+  </body>
 </html>
