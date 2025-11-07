@@ -3,11 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Sender</title>
+  <title>Dashboard</title>
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    nav { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      margin: 0; 
+      background-color: #f4f7f6; 
+    }
+    .container {
+      padding: 30px;
+    }
+    
+    /* Navigation */
+    nav { 
+      background-color: #fff;
+      padding: 20px 30px;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 30px;
+    }
     nav a { 
       padding: 10px 15px; 
       text-decoration: none; 
@@ -15,20 +29,98 @@
       color: white; 
       border-radius: 5px; 
       margin-right: 10px;
-      margin-bottom: 10px; /* Added for better wrapping on small screens */
-      display: inline-block; /* Added for better wrapping */
+      margin-bottom: 10px;
+      display: inline-block;
     }
     nav a:hover { background-color: #0056b3; }
-    h1 { color: #333; }
-    p { color: #555; font-size: 1.1em; }
+    
+    h1, h2 { color: #333; }
+    
+    /* Grid for Widgets */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); /* 3 columns */
+      grid-gap: 25px;
+      margin-bottom: 30px;
+    }
+    
+    /* Stat Box Widget */
+    .stat-box {
+      background: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    .stat-box-number {
+      font-size: 2.5em;
+      font-weight: 600;
+      color: #007bff;
+      margin: 0;
+    }
+    .stat-box-label {
+      font-size: 1.1em;
+      color: #555;
+      margin: 5px 0 0 0;
+    }
+    
+    /* Main Content Grid (2 columns) */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* 2 columns */
+      grid-gap: 25px;
+    }
+    
+    /* Widget Base Style */
+    .widget {
+      background: #fff;
+      border-radius: 8px;
+      padding: 25px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    
+    /* Inbox Widget */
+    .inbox-list { list-style-type: none; padding: 0; }
+    .inbox-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .inbox-item:last-child { border: 0; }
+    .inbox-item-contact { font-weight: 600; }
+    .inbox-item-body { color: #555; margin: 5px 0; }
+    
+    /* Campaign Report Widget */
+    .report-item { display: flex; justify-content: space-between; font-size: 1.1em; padding: 8px 0; }
+    .report-item-label { font-weight: 600; }
+    .report-item-value { color: #333; }
+
+    /* Quick Add Form */
+    form div { margin-bottom: 20px; }
+    form label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    form input[type="text"], form input[type="tel"], form select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box; 
+    }
+    form button { 
+      padding: 12px 20px; 
+      background-color: #007bff; 
+      color: white; 
+      border-radius: 5px; 
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    form button:hover { background-color: #0056b3; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .content-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
-  <h1>Welcome to Your Bulk Sender</h1>
-  
-  <p><%= message %></p>
-  
   <nav>
     <a href="/contacts">Manage Contacts</a>
     <a href="/campaigns">New Campaign</a>
@@ -37,5 +129,106 @@
     <a href="/inbox">View Inbox</a>
   </nav>
 
-</body>
+  <div class="container">
+    <h1>Dashboard</h1>
+
+    <div class="dashboard-grid">
+      <div class="stat-box">
+        <p class="stat-box-number"><%= totalContacts %></p>
+        <p class="stat-box-label">Total Contacts</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-box-number"><%= totalCampaigns %></p>
+        <p class="stat-box-label">Campaigns Sent</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-box-number"><%= totalUnread %></p>
+        <p class="stat-box-label">Unread Messages</p>
+      </div>
+    </div>
+
+    <div class="content-grid">
+
+      <div>
+        <div class="widget">
+          <h2>Recent Unread Messages</h2>
+          <ul class="inbox-list">
+            <% if (recentMessages.length > 0) { %>
+              <% recentMessages.forEach(function(message) { %>
+                <li class="inbox-item">
+                  <div class="inbox-item-contact">
+                    <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown' %>
+                  </div>
+                  <div class="inbox-item-body">
+                    <%= message.body.substring(0, 50) %>...
+                  </div>
+                </li>
+              <% }); %>
+            <% } else { %>
+              <li class="inbox-item-body">No unread messages.</li>
+            <% } %>
+          </ul>
+          <a href="/inbox">Go to full Inbox &rarr;</a>
+        </div>
+        
+        <div class="widget" style="margin-top: 25px;">
+          <h2>Last Campaign Sent</h2>
+          <% if (lastCampaign) { %>
+            <div class="report-item">
+              <span class="report-item-label">Name:</span>
+              <span class="report-item-value"><%= lastCampaign.name %></span>
+            </div>
+            <div class="report-item">
+              <span class="report-item-label">Total Sent:</span>
+              <span class="report-item-value"><%= lastCampaign.totalSent %></span>
+            </div>
+            <div class="report-item">
+              <span class="report-item-label">Delivered:</span>
+              <span class="report-item-value"><%= lastCampaign.deliveredCount %></span>
+            </div>
+            <div class="report-item">
+              <span class="report-item-label">Failed:</span>
+              <span class="report-item-value"><%= lastCampaign.failedCount %></span>
+            </div>
+          <% } else { %>
+            <p>You haven't sent any campaigns yet.</p>
+          <% } %>
+          <a href="/reports">View all reports &rarr;</a>
+        </div>
+      </div>
+
+      <div class="widget">
+        <h2>Quick-Add Contact</h2>
+        <form action="/contacts/add" method="POST">
+          <div>
+            <label for="name">Name (Optional):</label>
+            <input type="text" name="name" id="name" placeholder="e.g., Rohan Sharma">
+          </div>
+          <div>
+            <label for="phone">Phone Number:</label>
+            <input type="tel" name="phone" id="phone" placeholder="e.g., +919607732123" required>
+          </div>
+          <div>
+            <label for="companyId-single">Select Company:</label>
+            <select name="companyId" id="companyId-single" required>
+              <option value="">-- Please Select --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label for="segmentId-single">Add to Segment:</label>
+            <select name="segmentId" id="segmentId-single" required>
+              <option value="">-- Please Select --</option>
+              <% segments.forEach(function(segment) { %>
+                <option value="<%= segment._id %>"><%= segment.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <button type="submit">Save Contact</button>
+        </form>
+      </div>
+
+    </div> </div> </body>
 </html>

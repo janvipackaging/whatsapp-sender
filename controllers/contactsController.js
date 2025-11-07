@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('fast-csv');
-const { Parser } = require('json2csv'); // <-- 1. NEW IMPORT
+const { Parser } = require('json2csv');
 const Contact = require('../models/Contact');
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
@@ -93,7 +93,11 @@ exports.addSingleContact = async (req, res) => {
     });
     
     await newContact.save();
-    res.redirect('/contacts');
+    
+    // --- THIS IS THE UPDATED LINE ---
+    // It now redirects back to the main dashboard
+    res.redirect('/');
+    // --- END OF UPDATE ---
 
   } catch (error) {
     console.error('Error adding single contact:', error);
@@ -104,36 +108,27 @@ exports.addSingleContact = async (req, res) => {
   }
 };
 
-
-// ---
-// --- THIS IS THE NEW FUNCTION ---
-// ---
 // @desc    Export contacts as a CSV file
 exports.exportContacts = async (req, res) => {
   try {
-    // 1. Get the company and segment from the URL query
     const { companyId, segmentId } = req.query;
 
     if (!companyId || !segmentId) {
       return res.status(400).send('Company ID and Segment ID are required for export.');
     }
 
-    // 2. Find all contacts that match
     const contacts = await Contact.find({
       company: companyId,
       segments: segmentId
-    }).lean(); // .lean() makes it faster and gives us simple JSON
+    }).lean(); 
 
-    // 3. Define the columns for our CSV file
     const fields = ['phone', 'name'];
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(contacts);
 
-    // 4. Set the headers to tell the browser to download the file
     res.header('Content-Type', 'text/csv');
-    res.attachment('contacts_export.csv'); // This sets the file name
+    res.attachment('contacts_export.csv'); 
     
-    // 5. Send the CSV data
     res.send(csv);
 
   } catch (error) {

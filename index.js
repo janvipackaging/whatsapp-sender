@@ -2,6 +2,11 @@
 require('dotenv').config(); 
 const express = require('express');
 const connectDB = require('./db'); 
+const Contact = require('./models/Contact'); // <-- 1. NEW IMPORT
+const Campaign = require('./models/Campaign'); // <-- 2. NEW IMPORT
+const Message = require('./models/Message'); // <-- 3. NEW IMPORT
+const Company = require('./modelsM/Company'); // <-- 4. NEW IMPORT (for quick-add form)
+const Segment = require('./models/Segment'); // <-- 5. NEW IMPORT (for quick-add form)
 
 // --- Initialization ---
 const app = express();
@@ -16,12 +21,48 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); // For QStash & Webhooks
 
 // --- Routes ---
-app.get('/', (req, res) => {
-  res.render('index', { 
-    message: 'Welcome to your Dashboard!' 
-  });
+
+// @route   GET /
+// @desc    Show the main "True Dashboard"
+app.get('/', async (req, res) => {
+  try {
+    // 1. Get At-a-Glance Stats
+    const totalContacts = await Contact.countDocuments();
+    const totalCampaigns = await Campaign.countDocuments();
+    const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
+
+    // 2. Get Inbox Summary (last 3 unread messages)
+    const recentMessages = await Message.find({ isRead: false, direction: 'inbound' })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate('contact', 'name phone');
+      
+    // 3. Get Last Campaign Report
+    const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 });
+
+    // 4. Get Data for the "Quick Add" form
+    const companies = await Company.find();
+    const segments = await Segment.find();
+
+    // 5. Render the dashboard with all this data
+    res.render('index', { 
+      totalContacts,
+      totalCampaigns,
+      totalUnread,
+      recentMessages,
+      lastCampaign,
+      companies, // For the form
+      segments   // For the form
+    });
+
+  } catch (error) {
+    console.error("Error loading dashboard:", error);
+    res.status(500).send('Error loading dashboard');
+  }
 });
 
+
+// --- Other Routes ---
 const contactRoutes = require('./routes/contacts');
 app.use('/contacts', contactRoutes);
 
@@ -34,13 +75,11 @@ app.use('/templates', templateRoutes);
 const reportRoutes = require('./routes/reports'); 
 app.use('/reports', reportRoutes);
 
-const apiRoutes = require('./routes/api'); 
-app.use('/api', apiRoutes);
-
-// --- ADD THESE TWO NEW LINES ---
 const inboxRoutes = require('./routes/inbox'); 
 app.use('/inbox', inboxRoutes);
-// --- END OF NEW LINES ---
+
+const apiRoutes = require('./routes/api'); 
+app.use('/api', apiRoutes);
 
 // --- Start Server ---
 app.listen(PORT, () => {
