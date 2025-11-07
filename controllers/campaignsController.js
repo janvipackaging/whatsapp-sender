@@ -1,18 +1,21 @@
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
-const whatsappQueue = require('../services/queue'); // Import your queue
+const { Client } = require("@upstash/qstash"); // <-- NEW IMPORT
+require('dotenv').config();
+
+// --- NEW QSTASH CLIENT ---
+// It automatically reads your .env variables
+const qstashClient = new Client({
+  token: process.env.QSTASH_TOKEN,
+});
 
 // @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
-    // 1. Fetch all companies from the database
     const companies = await Company.find();
-    
-    // 2. Fetch all segments from the database
     const segments = await Segment.find();
     
-    // 3. Render the 'campaigns.ejs' view and pass the data
     res.render('campaigns', {
       companies: companies,
       segments: segments
@@ -26,25 +29,21 @@ exports.getCampaignPage = async (req, res) => {
 
 // @desc    Start sending a new bulk message campaign
 exports.startCampaign = async (req, res) => {
-  // 1. Get data from the HTML form
   const { companyId, segmentId, templateName } = req.body;
 
-  // 2. Validate input
   if (!companyId || !segmentId || !templateName) {
     return res.status(400).send('Company, Segment, and Template Name are all required.');
   }
 
   try {
-    // 3. Find the company to get its API token
     const company = await Company.findById(companyId);
     if (!company) {
       return res.status(404).send('Company not found.');
     }
 
-    // 4. Find all contacts that match the selected company AND segment
     const contacts = await Contact.find({
       company: companyId,
-      segments: segmentId // This checks if segmentId is in the 'segments' array
+      segments: segmentId
     });
 
     if (contacts.length === 0) {
@@ -53,29 +52,41 @@ exports.startCampaign = async (req, res) => {
                        <a href="/campaigns">Try Again</a>');
     }
 
-    // 5. --- THIS IS THE CORE QUEUE LOGIC ---
-    // Create an array of "jobs" to add to the queue
-    const jobs = [];
+    // --- THIS IS THE NEW QSTASH LOGIC ---
+    //
+    // IMPORTANT: We need to tell QStash which URL to call.
+    // This will be your *live* Vercel URL + a new API route.
+    // For now, we use a placeholder, you MUST change this after deploying.
+    //
+    // 1. First, deploy to Vercel to get your URL (e.g., "my-app.vercel.app")
+    // 2. Then, your REAL URL will be "https://my-app.vercel.app/api/send-message"
+    //
+    const destinationUrl = "https://YOUR-VERCEL-URL-HERE.vercel.app/api/send-message";
+
+    let jobsAdded = 0;
+    
+    // We must send one request to QStash for *each* contact.
     for (const contact of contacts) {
-      jobs.push({
-        name: 'send-message', // A name for this type of job
-        data: {
-          // This 'data' object is exactly what your worker.js file will receive
-          contact: contact,
-      templateName: templateName,
-          companyToken: company.whatsappToken,
-          companyNumberId: company.numberId
-        }
+      const jobData = {
+        contact: contact,
+        templateName: templateName,
+        companyToken: company.whatsappToken,
+        companyNumberId: company.numberId
+      };
+
+      // Publish the job to QStash
+      await qstashClient.publishJSON({
+        url: destinationUrl, // The URL QStash will call
+        body: jobData,        // The data to send (our old job data)
+        retries: 3            // Automatically retry if it fails
       });
+      jobsAdded++;
     }
+    // --- END OF NEW LOGIC ---
 
-    // 6. Add all jobs to the queue in one go (very fast)
-    await whatsappQueue.addBulk(jobs);
-
-    // 7. Send a success message
     res.send(`<h2>Campaign Started!</h2>
-              <p>Successfully added ${contacts.length} messages to the sending queue.</p>
-              <p>Your worker process will now send them one by one.</p>
+              <p>Successfully added ${jobsAdded} messages to the QStash queue.</p>
+              <p>QStash will now send them to your Vercel app one by one.</p>
               <a href="/campaigns">Start Another Campaign</a>`);
 
   } catch (error) {
