@@ -2,11 +2,11 @@
 require('dotenv').config(); 
 const express = require('express');
 const connectDB = require('./db'); 
-const Contact = require('./models/Contact'); // <-- 1. NEW IMPORT
-const Campaign = require('./models/Campaign'); // <-- 2. NEW IMPORT
-const Message = require('./models/Message'); // <-- 3. NEW IMPORT
-const Company = require('./modelsM/Company'); // <-- 4. NEW IMPORT (for quick-add form)
-const Segment = require('./models/Segment'); // <-- 5. NEW IMPORT (for quick-add form)
+const Contact = require('./models/Contact'); 
+const Campaign = require('./models/Campaign'); 
+const Message = require('./models/Message'); 
+const Company = require('./models/Company'); // <-- THIS LINE IS NOW FIXED
+const Segment = require('./models/Segment'); 
 
 // --- Initialization ---
 const app = express();
