@@ -15,7 +15,7 @@ connectDB(); // Execute the connection function
 app.set('view engine', 'ejs');
 
 // 2. This line is crucial: It allows your app to read data
-//    sent from your HTML forms (like the CSV upload form).
+//    sent from your HTML forms (like the CSV upload form).
 app.use(express.urlencoded({ extended: false }));
 
 // 3. This allows your app to read JSON data sent from QStash
@@ -24,10 +24,10 @@ app.use(express.json()); // <-- THIS LINE IS NEW
 // --- Routes ---
 // This is your main "home" route for the admin panel
 app.get('/', (req, res) => {
-  // This tells Express to find 'views/index.ejs' and send it
-  res.render('index', {
-    message: 'Welcome to your Dashboard!'
-  });
+  // This tells Express to find 'views/index.ejs' and send it
+  res.render('index', {
+    message: 'Welcome to your Dashboard!'
+  });
 });
 
 // "If a URL starts with /contacts,
@@ -43,10 +43,15 @@ app.use('/campaigns', campaignRoutes);
 // "If a URL starts with /api,
 // use the routes defined in './routes/api.js'"
 const apiRoutes = require('./routes/api'); // <-- THIS LINE IS NEW
-app.use('/api', apiRoutes);               // <-- THIS LINE IS NEW
+app.use('/api', apiRoutes);               // <-- THIS LINE IS NEW
+
+// --- ADD THESE TWO NEW LINES ---
+const templateRoutes = require('./routes/templates'); 
+app.use('/templates', templateRoutes);
+// --- END OF NEW LINES ---
 
 
 // --- Start Server ---
 app.listen(PORT, () => {
-  console.log(`Server is running successfully on http://localhost:${PORT}`);
+  console.log(`Server is running successfully on http://localhost:${PORT}`);
 });

@@ -1,7 +1,8 @@
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
-const Campaign = require('../models/Campaign'); // <-- 1. NEW IMPORT
+const Campaign = require('../models/Campaign');
+const Template = require('../models/Template'); // <-- 1. NEW IMPORT
 const { Client } = require("@upstash/qstash");
 require('dotenv').config();
 
@@ -9,15 +10,20 @@ const qstashClient = new Client({
   token: process.env.QSTASH_TOKEN,
 });
 
+// @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
+    // --- 2. THIS FUNCTION IS UPDATED ---
     const companies = await Company.find();
     const segments = await Segment.find();
-    
+    const templates = await Template.find(); // <-- Fetch all templates
+
     res.render('campaigns', {
       companies: companies,
-      segments: segments
+      segments: segments,
+      templates: templates // <-- Pass templates to the EJS page
     });
+    // --- END OF UPDATE ---
 
   } catch (error) {
     console.error('Error fetching data for campaign page:', error);
@@ -25,11 +31,14 @@ exports.getCampaignPage = async (req, res) => {
   }
 };
 
+// @desc    Start sending a new bulk message campaign
 exports.startCampaign = async (req, res) => {
-  const { companyId, segmentId, templateName } = req.body;
+  
+  // --- 3. THIS FUNCTION IS UPDATED ---
+  const { companyId, segmentId, templateId } = req.body; // <-- templateName is now templateId
 
-  if (!companyId || !segmentId || !templateName) {
-    return res.status(400).send('Company, Segment, and Template Name are all required.');
+  if (!companyId || !segmentId || !templateId) { // <-- Check for templateId
+    return res.status(400).send('Company, Segment, and Template are all required.');
   }
 
   try {
@@ -37,6 +46,14 @@ exports.startCampaign = async (req, res) => {
     if (!company) {
       return res.status(404).send('Company not found.');
     }
+
+    // --- Find the Template to get its name ---
+    const template = await Template.findById(templateId);
+    if (!template) {
+      return res.status(404).send('Template not found.');
+    }
+    const templateName = template.templateName; // <-- Get the *real* WhatsApp name
+    // --- End of new block ---
 
     const contacts = await Contact.find({
       company: companyId,
@@ -49,17 +66,17 @@ exports.startCampaign = async (req, res) => {
                        <a href="/campaigns">Try Again</a>`);
     }
 
-    // --- 2. CREATE THE CAMPAIGN RECORD ---
+    // --- Create the Campaign Record ---
     const newCampaign = new Campaign({
-      name: templateName, // We'll use the template name as the campaign name
+      name: template.name, // <-- Use the user-friendly name
       company: companyId,
       segment: segmentId,
-      templateName: templateName,
-      totalSent: contacts.length, // We know the total number of contacts
+      templateName: templateName, // <-- Use the real WhatsApp name
+      totalSent: contacts.length,
       status: 'Sending'
     });
     await newCampaign.save();
-    // --- END OF NEW CODE BLOCK ---
+    // --- END OF UPDATE ---
 
     const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
 
@@ -68,10 +85,10 @@ exports.startCampaign = async (req, res) => {
     for (const contact of contacts) {
       const jobData = {
         contact: contact,
-        templateName: templateName,
+        templateName: templateName, // <-- Pass the real template name
         companyToken: company.whatsappToken,
         companyNumberId: company.numberId,
-        campaignId: newCampaign._id // <-- 3. PASS THE NEW CAMPAIGN ID
+        campaignId: newCampaign._id 
       };
 
       await qstashClient.publishJSON({

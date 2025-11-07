@@ -34,7 +34,7 @@
 <body>
 
   <h1>Create New Campaign</h1>
-  <p><a href="/">&larr; Back to Dashboard</a></p>
+  <p><a href="/">&larr; Back to Dashboard</a> | <a href="/templates">Manage Templates</a></p>
 
   <form action="/campaigns/start" method="POST">
     
@@ -59,10 +59,16 @@
     </div>
 
     <div>
-      <label for="templateName">Approved Template Name:</label>
-      <input type="text" name="templateName" id="templateName" placeholder="e.g., diwali_offer_v2" required>
+      <label for="templateId">Select Template:</label>
+      <select name="templateId" id="templateId" required>
+        <option value="">-- Please Select --</option>
+        <% templates.forEach(function(template) { %>
+          <option value="<%= template._id %>">
+            <%= template.name %> (<%= template.templateName %>)
+          </option>
+        <% }); %>
+      </select>
     </div>
-    
     <button type="submit">Start Campaign</button>
   </form>
 
