@@ -4,12 +4,10 @@ const Contact = require('../models/Contact');
 const { Client } = require("@upstash/qstash");
 require('dotenv').config();
 
-// --- NEW QSTASH CLIENT ---
 const qstashClient = new Client({
   token: process.env.QSTASH_TOKEN,
 });
 
-// @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
     const companies = await Company.find();
@@ -26,7 +24,6 @@ exports.getCampaignPage = async (req, res) => {
   }
 };
 
-// @desc    Start sending a new bulk message campaign
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateName } = req.body;
 
@@ -37,7 +34,6 @@ exports.startCampaign = async (req, res) => {
   try {
     const company = await Company.findById(companyId);
     if (!company) {
-      // --- THIS IS THE FIXED LINE ---
       return res.status(404).send('Company not found.');
     }
 
@@ -47,19 +43,16 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (contacts.length === 0) {
-      return res.send('<h2>No Contacts Found</h2>
+      // --- FIX 1: USE BACKTICKS ---
+      return res.send(`<h2>No Contacts Found</h2>
                        <p>No contacts were found for that company and segment combination.</p>
-                       <a href="/campaigns">Try Again</a>');
+                       <a href="/campaigns">Try Again</a>`);
     }
 
-    //
-    // This is your live Vercel URL.
-    //
-    const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message"; // <-- UPDATED
+    const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
 
     let jobsAdded = 0;
     
-    // We must send one request to QStash for *each* contact.
     for (const contact of contacts) {
       const jobData = {
         contact: contact,
@@ -68,16 +61,15 @@ exports.startCampaign = async (req, res) => {
         companyNumberId: company.numberId
       };
 
-      // Publish the job to QStash
       await qstashClient.publishJSON({
-        url: destinationUrl, // The URL QStash will call
-        body: jobData,        // The data to send
-        retries: 3            // Automatically retry if it fails
+        url: destinationUrl,
+        body: jobData,
+        retries: 3
       });
       jobsAdded++;
     }
-    // --- END OF NEW LOGIC ---
 
+    // --- FIX 2: USE BACKTICKS ---
     res.send(`<h2>Campaign Started!</h2>
               <p>Successfully added ${jobsAdded} messages to the QStash queue.</p>
               <p>QStash will now send them to your Vercel app one by one.</p>
