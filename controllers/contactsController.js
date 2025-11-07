@@ -44,7 +44,6 @@ exports.importContacts = async (req, res) => {
   }
 
   const contactsToImport = [];
-  const filePath = path.resolve(__dirname, '..', req.file.path);
 
   // 3. Use fast-csv to read the uploaded file
   fs.createReadStream(filePath)
