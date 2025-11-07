@@ -31,12 +31,15 @@ app.use('/campaigns', campaignRoutes);
 const templateRoutes = require('./routes/templates'); 
 app.use('/templates', templateRoutes);
 
+const reportRoutes = require('./routes/reports'); 
+app.use('/reports', reportRoutes);
+
 const apiRoutes = require('./routes/api'); 
 app.use('/api', apiRoutes);
 
 // --- ADD THESE TWO NEW LINES ---
-const reportRoutes = require('./routes/reports'); 
-app.use('/reports', reportRoutes);
+const inboxRoutes = require('./routes/inbox'); 
+app.use('/inbox', inboxRoutes);
 // --- END OF NEW LINES ---
 
 // --- Start Server ---
