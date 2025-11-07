@@ -1,4 +1,4 @@
-const fetch = require('node-fetch@2');
+const fetch = require('node-fetch'); // <-- THIS IS THE FIX
 
 // This is the function our /api/send-message route will run
 exports.sendMessage = async (req, res) => {
@@ -9,10 +9,7 @@ exports.sendMessage = async (req, res) => {
     // 2. Build the WhatsApp API URL
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
-    // 3. --- THIS IS THE FIX ---
-    // We have REMOVED the 'components' block.
-    // This will only work for templates with ZERO variables.
-    
+    // 3. Build the message payload (for templates with NO variables)
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
@@ -20,10 +17,8 @@ exports.sendMessage = async (req, res) => {
       template: {
         name: templateName,
         language: { code: "en_US" }
-        // The 'components' section has been deleted.
       }
     };
-    // --- END OF FIX ---
 
     // 4. Send the message to the WhatsApp API
     const response = await fetch(WHATSAPP_API_URL, {
