@@ -1,4 +1,4 @@
-const fetch = require('node-fetch'); // <-- THIS IS THE FIX
+const fetch = require('node-fetch');
 
 // This is the function our /api/send-message route will run
 exports.sendMessage = async (req, res) => {
@@ -6,19 +6,39 @@ exports.sendMessage = async (req, res) => {
     // 1. Get the job data from the request body (sent by QStash)
     const { contact, templateName, companyToken, companyNumberId } = req.body;
 
-    // 2. Build the WhatsApp API URL
+    // 2. Build the WhatsApp API URL (Using v19.0, which is fine)
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
-    // 3. Build the message payload (for templates with NO variables)
+    // 3. --- THIS IS THE FINAL FIX ---
+    // We are now sending the payload exactly as your
+    // working PowerShell script does.
+    
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
       type: "template",
       template: {
-        name: templateName,
-        language: { code: "en_US" }
+        name: templateName, // e.g., "welcome"
+        language: { code: "en_US" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                // This is the variable *value* (e.g., "Uday" or "Rohan")
+                text: contact.name || "friend", // Use contact's name, or "friend" as a backup
+                
+                // --- THIS IS THE NEW LINE ---
+                // This is the variable *name*
+                parameter_name: "customer_name" 
+              }
+            ]
+          }
+        ]
       }
     };
+    // --- END OF FIX ---
 
     // 4. Send the message to the WhatsApp API
     const response = await fetch(WHATSAPP_API_URL, {
@@ -34,7 +54,8 @@ exports.sendMessage = async (req, res) => {
 
     // 5. Check if the message send was successful
     if (!response.ok) {
-      console.error('WhatsApp API Error:', result.error.message);
+      // Log the *full* error
+      console.error('WhatsApp API Error:', JSON.stringify(result.error, null, 2));
       return res.status(500).json({ success: false, error: result.error.message });
     }
 
