@@ -12,9 +12,11 @@ exports.getLoginPage = (req, res) => {
   });
 };
 
-// @desc    Show the registration page
+// @desc    Show the registration page (FIXED)
 exports.getRegisterPage = (req, res) => {
-  res.render('register');
+  res.render('register', {
+    error: null // <-- ADD THIS LINE: Pass a default 'null' value
+  });
 };
 
 // @desc    Handle new user registration
@@ -23,6 +25,7 @@ exports.registerUser = async (req, res) => {
     const { username, password, password2 } = req.body;
 
     // --- Validation ---
+    // If there is an error during POST, we pass the error back to the EJS template
     if (!username || !password || !password2) {
       return res.render('register', { error: 'Please fill in all fields' });
     }
@@ -32,7 +35,6 @@ exports.registerUser = async (req, res) => {
     if (password.length < 6) {
       return res.render('register', { error: 'Password must be at least 6 characters' });
     }
-    // --- End Validation ---
 
     // Check if user already exists
     const existingUser = await User.findOne({ username: username });
@@ -40,16 +42,14 @@ exports.registerUser = async (req, res) => {
       return res.render('register', { error: 'That username is already taken' });
     }
 
-    // All checks passed. Create the new user.
-    // The password will be automatically hashed by the code in 'models/User.js'
+    // Create the new user.
     const newUser = new User({
       username: username,
       password: password
     });
 
-    await newUser.save(); // Save the user (this triggers the password hashing)
+    await newUser.save(); 
 
-    // Set a success message and redirect them to the login page
     req.flash('success_msg', 'You are now registered and can log in');
     res.redirect('/users/login');
 
