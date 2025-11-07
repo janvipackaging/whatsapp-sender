@@ -11,13 +11,18 @@
   "license": "ISC",
   "dependencies": {
     "@upstash/qstash": "^2.8.4",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "express-flash": "^0.0.2",
+    "express-session": "^1.18.2",
     "fast-csv": "^5.0.5",
     "json2csv": "^6.0.0-alpha.2",
     "mongoose": "^8.19.2",
     "multer": "^2.0.2",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0"
   }
 }

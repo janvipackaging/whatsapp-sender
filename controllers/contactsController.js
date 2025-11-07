@@ -6,17 +6,36 @@ const Contact = require('../models/Contact');
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 
+// --- Helper Function: Auto-fixes phone numbers ---
+function formatPhoneNumber(phone) {
+  if (!phone) return null;
+  
+  // Remove any spaces or dashes
+  let cleaned = phone.replace(/[\s-]+/g, '');
+  
+  // Check if it already starts with '+'
+  if (cleaned.startsWith('+')) {
+    return cleaned; // It's already correct
+  }
+  
+  // If not, add '+'
+  return `+${cleaned}`;
+}
+// --- End of Helper Function ---
+
+
 // @desc    Show the main contacts page
 exports.getContactsPage = async (req, res) => {
   try {
     const companies = await Company.find();
     const segments = await Segment.find();
 
+    // Pass the flash messages to the view
     res.render('contacts', {
       companies: companies,
       segments: segments,
-      success_msg: null,
-      error_msg: null
+      success_msg: req.flash('success_msg'),
+      error_msg: req.flash('error_msg')
     });
   } catch (error) {
     res.status(500).send('Error loading page');
@@ -26,11 +45,13 @@ exports.getContactsPage = async (req, res) => {
 // @desc    Handle the CSV file upload
 exports.importContacts = async (req, res) => {
   if (!req.file) {
-    return res.status(400).send('No file uploaded.');
+    req.flash('error_msg', 'No file was uploaded. Please try again.');
+    return res.redirect('/contacts');
   }
   const { companyId, segmentId } = req.body;
   if (!companyId || !segmentId) {
-    return res.status(400).send('Company ID and Segment ID are required.');
+    req.flash('error_msg', 'Company and Segment must be selected.');
+    return res.redirect('/contacts');
   }
 
   const contactsToImport = [];
@@ -41,12 +62,14 @@ exports.importContacts = async (req, res) => {
     .on('error', (error) => {
       console.error(error);
       fs.unlinkSync(filePath);
-      return res.status(500).send('Error parsing CSV file.');
+      req.flash('error_msg', 'Error parsing CSV file.');
+      return res.redirect('/contacts');
     })
     .on('data', (row) => {
-      if (row.phone) {
+      const formattedPhone = formatPhoneNumber(row.phone); // --- USE THE AUTO-FIX ---
+      if (formattedPhone) { // Only add if the phone number is valid
         contactsToImport.push({
-          phone: row.phone,
+          phone: formattedPhone,
           name: row.name || '',
           company: companyId,
           segments: [segmentId]
@@ -57,21 +80,25 @@ exports.importContacts = async (req, res) => {
       console.log(`Parsed ${rowCount} rows from CSV.`);
       fs.unlinkSync(filePath); 
 
+      if (contactsToImport.length === 0) {
+        req.flash('error_msg', 'No valid contacts were found in the file.');
+        return res.redirect('/contacts');
+      }
+
       try {
         const result = await Contact.insertMany(contactsToImport, { ordered: false });
-        res.send(`<h2>Import Complete!</h2>
-                  <p>Successfully imported ${result.length} new contacts.</p>
-                  <a href="/contacts">Import More</a>`);
+        req.flash('success_msg', `Import complete! ${result.length} new contacts were added.`);
+        res.redirect('/contacts');
                   
       } catch (error) {
         if (error.code === 11000) {
-          res.send(`<h2>Import Finished</h2>
-                    <p>Successfully imported ${error.result.nInserted} new contacts.</p>
-                    <p>Duplicates were automatically skipped.</p>
-                    <a href="/contacts">Import More</a>`);
+          // This error is expected for duplicates
+          req.flash('success_msg', `Import finished. ${error.result.nInserted} new contacts were added. Duplicates were skipped.`);
+          res.redirect('/contacts');
         } else {
           console.error(error);
-          res.status(500).send('An error occurred during the database import.');
+          req.flash('error_msg', 'An error occurred during database import.');
+          res.redirect('/contacts');
         }
       }
     });
@@ -82,29 +109,37 @@ exports.addSingleContact = async (req, res) => {
   try {
     const { name, phone, companyId, segmentId } = req.body;
     if (!phone || !companyId || !segmentId) {
-      return res.status(400).send('Phone, Company, and Segment are required.');
+      req.flash('error_msg', 'Phone, Company, and Segment are required.');
+      return res.redirect('/'); // Redirect to dashboard
+    }
+
+    const formattedPhone = formatPhoneNumber(phone); // --- USE THE AUTO-FIX ---
+    if (!formattedPhone) {
+      req.flash('error_msg', 'Invalid phone number format.');
+      return res.redirect('/');
     }
 
     const newContact = new Contact({
       name: name || '',
-      phone: phone,
+      phone: formattedPhone,
       company: companyId,
       segments: [segmentId]
     });
     
     await newContact.save();
     
-    // --- THIS IS THE UPDATED LINE ---
-    // It now redirects back to the main dashboard
-    res.redirect('/');
-    // --- END OF UPDATE ---
+    // --- SET SUCCESS FLASH MESSAGE ---
+    req.flash('success_msg', 'Contact added successfully!');
+    res.redirect('/'); // Redirect to dashboard
 
   } catch (error) {
     console.error('Error adding single contact:', error);
     if (error.code === 11000) {
-      return res.status(400).send('Error: A contact with this phone number already exists for this company.');
+      req.flash('error_msg', 'Error: A contact with this phone number already exists for this company.');
+      return res.redirect('/');
     }
-    res.status(500).send('Error adding contact');
+    req.flash('error_msg', 'An error occurred while adding the contact.');
+    res.redirect('/');
   }
 };
 
@@ -114,13 +149,19 @@ exports.exportContacts = async (req, res) => {
     const { companyId, segmentId } = req.query;
 
     if (!companyId || !segmentId) {
-      return res.status(400).send('Company ID and Segment ID are required for export.');
+      req.flash('error_msg', 'Company and Segment must be selected for export.');
+      return res.redirect('/contacts');
     }
 
     const contacts = await Contact.find({
       company: companyId,
       segments: segmentId
     }).lean(); 
+
+    if (contacts.length === 0) {
+      req.flash('error_msg', 'No contacts found in that segment to export.');
+      return res.redirect('/contacts');
+    }
 
     const fields = ['phone', 'name'];
     const json2csvParser = new Parser({ fields });
