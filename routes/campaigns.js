@@ -8,12 +8,16 @@ const campaignsController = require('../controllers/campaignsController');
 
 // @route   GET /campaigns/
 // @desc    Show the "Create New Campaign" page
-// @access  Public (for now)
 router.get('/', campaignsController.getCampaignPage);
 
 // @route   POST /campaigns/start
 // @desc    Start sending a new bulk message campaign
-// @access  Public (for now)
 router.post('/start', campaignsController.startCampaign);
+
+// --- ADD THIS NEW ROUTE ---
+// @route   POST /campaigns/test
+// @desc    Send a single test message for a campaign
+router.post('/test', campaignsController.sendTestMessage);
+// --- END OF NEW ROUTE ---
 
 module.exports = router;
