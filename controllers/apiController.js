@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const fetch = require('node-fetch@2');
 
 // This is the function our /api/send-message route will run
 exports.sendMessage = async (req, res) => {
@@ -9,18 +9,35 @@ exports.sendMessage = async (req, res) => {
     // 2. Build the WhatsApp API URL
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
-    // 3. Build the message payload
+    // 3. --- THIS IS THE FIX ---
+    // We will now add the 'components' section.
+    // We assume your template's variable {{1}} is the contact's name.
+    
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
       type: "template",
       template: {
         name: templateName,
-        language: { code: "en_US" }
-        // Note: We are not including template variables here for simplicity.
-        // We would need to add 'components' if your template has variables.
+        language: { code: "en_US" },
+        // --- ADDED THIS SECTION ---
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                // We send the contact's name.
+                // If the name is blank, we send "friend" as a backup.
+                text: contact.name || "friend" 
+              }
+            ]
+          }
+        ]
+        // --- END OF ADDED SECTION ---
       }
     };
+    // --- END OF FIX ---
 
     // 4. Send the message to the WhatsApp API
     const response = await fetch(WHATSAPP_API_URL, {
@@ -36,14 +53,11 @@ exports.sendMessage = async (req, res) => {
 
     // 5. Check if the message send was successful
     if (!response.ok) {
-      // If it fails, log the error and send a 500 status.
-      // QStash will see the 500 and *retry* the job automatically.
       console.error('WhatsApp API Error:', result.error.message);
       return res.status(500).json({ success: false, error: result.error.message });
     }
 
     // 6. If it succeeds, log it and send a 200 status.
-    // QStash will see the 200 and mark the job as *complete*.
     console.log(`Message sent successfully to: ${contact.phone}`);
     res.status(200).json({ success: true, messageId: result.messages[0].id });
 
