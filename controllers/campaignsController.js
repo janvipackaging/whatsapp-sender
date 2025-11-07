@@ -38,7 +38,7 @@ exports.startCampaign = async (req, res) => {
   try {
     const company = await Company.findById(companyId);
     if (!company) {
-      return res.status(404).send('Company not found.');
+      return res.status(4SAP).send('Company not found.');
     }
 
     const contacts = await Contact.find({
@@ -54,14 +54,9 @@ exports.startCampaign = async (req, res) => {
 
     // --- THIS IS THE NEW QSTASH LOGIC ---
     //
-    // IMPORTANT: We need to tell QStash which URL to call.
-    // This will be your *live* Vercel URL + a new API route.
-    // For now, we use a placeholder, you MUST change this after deploying.
+    // This is your live Vercel URL.
     //
-    // 1. First, deploy to Vercel to get your URL (e.g., "my-app.vercel.app")
-    // 2. Then, your REAL URL will be "https://my-app.vercel.app/api/send-message"
-    //
-    const destinationUrl = "https://YOUR-VERCEL-URL-HERE.vercel.app/api/send-message";
+    const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message"; // <-- UPDATED
 
     let jobsAdded = 0;
     
@@ -77,7 +72,7 @@ exports.startCampaign = async (req, res) => {
       // Publish the job to QStash
       await qstashClient.publishJSON({
         url: destinationUrl, // The URL QStash will call
-        body: jobData,        // The data to send (our old job data)
+        body: jobData,        // The data to send
         retries: 3            // Automatically retry if it fails
       });
       jobsAdded++;
