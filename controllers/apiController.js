@@ -1,4 +1,4 @@
-const fetch = require('node-fetch'); // <-- 1. This is the correct require
+const fetch = require('node-fetch'); // <-- Correct require
 const Campaign = require('../models/Campaign');
 const Message = require('../models/Message');
 const Company = require('../models/Company');
@@ -14,7 +14,7 @@ exports.sendMessage = async (req, res) => {
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
     // 3. --- THIS IS THE FINAL FIX ---
-    // We are adding back the 'components' block
+    // We are adding the 'components' block
     // to match your working PowerShell script.
     
     const messageData = {
@@ -167,7 +167,6 @@ async function updateCampaignStatus(statusUpdate) {
   try {
     if (statusUpdate.status === 'read') {
       console.log(`Message ${statusUpdate.id} was read.`);
-      // We will add the logic to update the 'readCount' in our next phase.
     }
   } catch (error) {
     console.error("Error updating campaign status:", error);
