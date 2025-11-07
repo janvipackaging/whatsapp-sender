@@ -1,44 +1,26 @@
 const fetch = require('node-fetch');
+const Campaign = require('../models/Campaign'); // <-- 1. NEW IMPORT
 
 // This is the function our /api/send-message route will run
 exports.sendMessage = async (req, res) => {
   try {
     // 1. Get the job data from the request body (sent by QStash)
-    const { contact, templateName, companyToken, companyNumberId } = req.body;
+    //    We now get the campaignId as well
+    const { contact, templateName, companyToken, companyNumberId, campaignId } = req.body;
 
-    // 2. Build the WhatsApp API URL (Using v19.0, which is fine)
+    // 2. Build the WhatsApp API URL
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
-    // 3. --- THIS IS THE FINAL FIX ---
-    // We are now sending the payload exactly as your
-    // working PowerShell script does.
-    
+    // 3. Build the message payload (for templates with NO variables)
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
       type: "template",
       template: {
-        name: templateName, // e.g., "welcome"
-        language: { code: "en_US" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                // This is the variable *value* (e.g., "Uday" or "Rohan")
-                text: contact.name || "friend", // Use contact's name, or "friend" as a backup
-                
-                // --- THIS IS THE NEW LINE ---
-                // This is the variable *name*
-                parameter_name: "customer_name" 
-              }
-            ]
-          }
-        ]
+        name: templateName,
+        language: { code: "en_US" }
       }
     };
-    // --- END OF FIX ---
 
     // 4. Send the message to the WhatsApp API
     const response = await fetch(WHATSAPP_API_URL, {
@@ -54,13 +36,29 @@ exports.sendMessage = async (req, res) => {
 
     // 5. Check if the message send was successful
     if (!response.ok) {
-      // Log the *full* error
-      console.error('WhatsApp API Error:', JSON.stringify(result.error, null, 2));
+      console.error('WhatsApp API Error:', result.error.message);
+      
+      // --- 5a. UPDATE FAILED COUNT ---
+      // If the send fails, find the campaign and increment the 'failedCount'
+      if (campaignId) {
+        await Campaign.findByIdAndUpdate(campaignId, { $inc: { failedCount: 1 } });
+      }
+      // --- END OF NEW CODE ---
+      
       return res.status(500).json({ success: false, error: result.error.message });
     }
 
     // 6. If it succeeds, log it and send a 200 status.
     console.log(`Message sent successfully to: ${contact.phone}`);
+    
+    // --- 6a. UPDATE DELIVERED COUNT ---
+    // We are counting this as 'delivered' for now.
+    // Later, the webhook will make this more accurate.
+    if (campaignId) {
+      await Campaign.findByIdAndUpdate(campaignId, { $inc: { deliveredCount: 1 } });
+    }
+    // --- END OF NEW CODE ---
+
     res.status(200).json({ success: true, messageId: result.messages[0].id });
 
   } catch (error) {

@@ -1,6 +1,7 @@
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
+const Campaign = require('../models/Campaign'); // <-- 1. NEW IMPORT
 const { Client } = require("@upstash/qstash");
 require('dotenv').config();
 
@@ -43,11 +44,22 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (contacts.length === 0) {
-      // --- FIX 1: USE BACKTICKS ---
       return res.send(`<h2>No Contacts Found</h2>
                        <p>No contacts were found for that company and segment combination.</p>
                        <a href="/campaigns">Try Again</a>`);
     }
+
+    // --- 2. CREATE THE CAMPAIGN RECORD ---
+    const newCampaign = new Campaign({
+      name: templateName, // We'll use the template name as the campaign name
+      company: companyId,
+      segment: segmentId,
+      templateName: templateName,
+      totalSent: contacts.length, // We know the total number of contacts
+      status: 'Sending'
+    });
+    await newCampaign.save();
+    // --- END OF NEW CODE BLOCK ---
 
     const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
 
@@ -58,7 +70,8 @@ exports.startCampaign = async (req, res) => {
         contact: contact,
         templateName: templateName,
         companyToken: company.whatsappToken,
-        companyNumberId: company.numberId
+        companyNumberId: company.numberId,
+        campaignId: newCampaign._id // <-- 3. PASS THE NEW CAMPAIGN ID
       };
 
       await qstashClient.publishJSON({
@@ -69,10 +82,9 @@ exports.startCampaign = async (req, res) => {
       jobsAdded++;
     }
 
-    // --- FIX 2: USE BACKTICKS ---
     res.send(`<h2>Campaign Started!</h2>
               <p>Successfully added ${jobsAdded} messages to the QStash queue.</p>
-              <p>QStash will now send them to your Vercel app one by one.</p>
+              <p>A new report has been created for this campaign.</p>
               <a href="/campaigns">Start Another Campaign</a>`);
 
   } catch (error) {
