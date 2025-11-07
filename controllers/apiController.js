@@ -10,8 +10,8 @@ exports.sendMessage = async (req, res) => {
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
 
     // 3. --- THIS IS THE FIX ---
-    // We will now add the 'components' section.
-    // We assume your template's variable {{1}} is the contact's name.
+    // We have REMOVED the 'components' block.
+    // This will only work for templates with ZERO variables.
     
     const messageData = {
       messaging_product: "whatsapp",
@@ -19,22 +19,8 @@ exports.sendMessage = async (req, res) => {
       type: "template",
       template: {
         name: templateName,
-        language: { code: "en_US" },
-        // --- ADDED THIS SECTION ---
-        components: [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                // We send the contact's name.
-                // If the name is blank, we send "friend" as a backup.
-                text: contact.name || "friend" 
-              }
-            ]
-          }
-        ]
-        // --- END OF ADDED SECTION ---
+        language: { code: "en_US" }
+        // The 'components' section has been deleted.
       }
     };
     // --- END OF FIX ---
