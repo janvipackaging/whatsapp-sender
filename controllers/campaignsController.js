@@ -1,11 +1,10 @@
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
-const { Client } = require("@upstash/qstash"); // <-- NEW IMPORT
+const { Client } = require("@upstash/qstash");
 require('dotenv').config();
 
 // --- NEW QSTASH CLIENT ---
-// It automatically reads your .env variables
 const qstashClient = new Client({
   token: process.env.QSTASH_TOKEN,
 });
@@ -38,7 +37,8 @@ exports.startCampaign = async (req, res) => {
   try {
     const company = await Company.findById(companyId);
     if (!company) {
-      return res.status(4SAP).send('Company not found.');
+      // --- THIS IS THE FIXED LINE ---
+      return res.status(404).send('Company not found.');
     }
 
     const contacts = await Contact.find({
@@ -52,7 +52,6 @@ exports.startCampaign = async (req, res) => {
                        <a href="/campaigns">Try Again</a>');
     }
 
-    // --- THIS IS THE NEW QSTASH LOGIC ---
     //
     // This is your live Vercel URL.
     //
