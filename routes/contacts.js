@@ -1,29 +1,41 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const { isAuthenticated } = require('../config/auth');
 const contactsController = require('../controllers/contactsController');
 
 // --- Multer Setup ---
+// Vercel-safe '/tmp/' folder
 const upload = multer({ dest: '/tmp/' });
 
-// --- Define Routes ---
+// --- All Contact Routes ---
+// Note: 'isAuthenticated' is already applied in index.js for '/contacts'
 
-// @route   GET /contacts/
-// @desc    Show the main contacts page
+// @route   GET /
+// @desc    Show the main contacts "Master List" page
 router.get('/', contactsController.getContactsPage);
 
-// @route   POST /contacts/import
+// @route   POST /import
 // @desc    Handle the CSV file upload
 router.post('/import', upload.single('csvFile'), contactsController.importContacts);
 
-// @route   POST /contacts/add
+// @route   POST /add
 // @desc    Handle adding a single contact
 router.post('/add', contactsController.addSingleContact);
 
-// --- ADD THIS NEW ROUTE ---
-// @route   GET /contacts/export
+// @route   GET /export
 // @desc    Handle downloading a CSV file of contacts
 router.get('/export', contactsController.exportContacts);
-// --- END OF NEW ROUTE ---
+
+// --- ADD THIS NEW ROUTE ---
+// @route   GET /view/:id
+// @desc    Show the single contact profile & activity log page
+router.get('/view/:id', contactsController.getSingleContactPage);
+
+// --- ADD THIS NEW ROUTE ---
+// @route   POST /update/:id
+// @desc    Handle the "Edit Contact" form submission
+router.post('/update/:id', contactsController.updateContact);
+
 
 module.exports = router;
