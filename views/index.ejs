@@ -38,6 +38,7 @@
       margin-bottom: 8px;
       display: inline-block;
       transition: background-color 0.2s;
+      font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
     .btn-logout { background-color: #dc2626 !important; float: right; }
@@ -69,9 +70,12 @@
       border-radius: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       text-align: center;
-      transition: transform 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    .stat-box:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .stat-box:hover { 
+      transform: translateY(-3px); 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    }
     .stat-box-number {
       font-size: 3em;
       font-weight: 700;
@@ -83,12 +87,13 @@
       color: #555;
       margin: 5px 0 0 0;
       text-transform: uppercase;
+      font-weight: 600;
     }
     
     /* Main Content Grid (2 columns) */
     .content-grid {
       display: grid;
-      grid-template-columns: 2fr 1fr; /* Inbox/Reports wider than Quick-Add form */
+      grid-template-columns: 2fr 1fr; /* Inbox/Reports wider */
       grid-gap: 25px;
     }
     
@@ -100,7 +105,7 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
-    /* Widget Specifics */
+    /* Pending Users Widget */
     .pending-user-item { 
       border-bottom: 1px solid #eee; 
       padding: 12px 0; 
@@ -117,14 +122,18 @@
       text-decoration: none;
       font-size: 0.9em;
       transition: background-color 0.2s;
+      font-weight: 600;
     }
     .btn-approve:hover { background-color: #16a34a; }
 
+    /* Inbox/Report Widget Styles */
     .inbox-list { list-style-type: none; padding: 0; }
     .inbox-item { border-bottom: 1px solid #eee; padding: 10px 0; }
     .inbox-item:last-child { border: 0; }
     .inbox-item-contact { font-weight: 600; color: #1e3a8a; }
     .inbox-item-body { color: #555; margin: 5px 0; font-style: italic; }
+    .widget-link { display: block; margin-top: 15px; font-weight: 600; color: #4f46e5; text-decoration: none; }
+    .widget-link:hover { text-decoration: underline; }
     
     .report-item { display: flex; justify-content: space-between; font-size: 1em; padding: 8px 0; border-bottom: 1px dotted #eee; }
     .report-item:last-child { border: none; }
@@ -133,6 +142,35 @@
 
     /* Quick Add Form Styles */
     .widget form div { margin-bottom: 15px; }
+    .widget form label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      color: #333; 
+    }
+    .widget form input[type="text"], 
+    .widget form input[type="tel"], 
+    .widget form select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box; 
+      font-size: 1em;
+    }
+    .widget form button { 
+      padding: 12px 20px; 
+      background-color: #007bff; 
+      color: white; 
+      border-radius: 5px; 
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+      width: 100%;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    .widget form button:hover { background-color: #0056b3; }
 
     /* Responsive */
     @media (max-width: 1000px) {
@@ -156,6 +194,7 @@
     <a href="/templates">Manage Templates</a>
     <a href="/reports">Campaign Reports</a>
     <a href="/inbox">View Inbox</a>
+    <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
     <a href="/users/logout" class="btn-logout">Log Out</a>
   </nav>
 
@@ -208,6 +247,7 @@
             <% } %>
           </ul>
         </div>
+        
         <div class="widget" style="margin-bottom: 25px;">
           <h2>Recent Replies</h2>
           <ul class="inbox-list">
@@ -226,11 +266,11 @@
               <li class="inbox-item-body">No recent replies.</li>
             <% } %>
           </ul>
-          <a href="/inbox">Go to full Inbox &rarr;</a>
+          <a href="/inbox" class="widget-link">Go to full Inbox &rarr;</a>
         </div>
         
         <div class="widget">
-          <h2>Last Campaign Sent Summary</h2>
+          <h2>Last Campaign Summary</h2>
           <% if (lastCampaign) { %>
             <div class="report-item">
               <span class="report-item-label">Name:</span>
@@ -251,7 +291,7 @@
           <% } else { %>
             <p>No campaigns have been sent yet.</p>
           <% } %>
-          <a href="/reports">View full reports &rarr;</a>
+          <a href="/reports" class="widget-link">View full reports &rarr;</a>
         </div>
       </div>
 
