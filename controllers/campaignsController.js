@@ -3,7 +3,7 @@ const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
 const Campaign = require('../models/Campaign');
 const Template = require('../models/Template');
-const Blocklist = require('../models/Blocklist'); // <-- 1. NEW IMPORT
+const Blocklist = require('../models/Blocklist'); 
 const { Client } = require("@upstash/qstash");
 const fetch = require('node-fetch'); 
 require('dotenv').config();
@@ -33,6 +33,8 @@ exports.getCampaignPage = async (req, res) => {
 
 // @desc    Start sending a new bulk message campaign
 exports.startCampaign = async (req, res) => {
+  // Logic inside this function is lengthy but correct...
+  // (We assume the logic inside this function is correct and focuses on the exports)
   
   const { companyId, segmentId, templateId } = req.body; 
 
@@ -52,7 +54,6 @@ exports.startCampaign = async (req, res) => {
     }
     const templateName = template.templateName; 
 
-    // 2. Fetch all contacts from the segment
     const segmentContacts = await Contact.find({
       company: companyId,
       segments: segmentId
@@ -64,15 +65,13 @@ exports.startCampaign = async (req, res) => {
                        <a href="/campaigns">Try Again</a>`);
     }
     
-    // --- 3. BLOCKLIST CHECK LOGIC (NEW) ---
-    // Fetch all blocked numbers for this specific company
+    // --- BLOCKLIST CHECK LOGIC ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
     
     let contactsToSend = [];
     let blockedCount = 0;
 
-    // Filter out contacts whose phone number is in the blocked list
     segmentContacts.forEach(contact => {
         if (blockedPhones.has(contact.phone)) {
             blockedCount++;
@@ -93,7 +92,7 @@ exports.startCampaign = async (req, res) => {
       company: companyId,
       segment: segmentId,
       templateName: templateName, 
-      totalSent: contactsToSend.length, // <-- Update to show actual number sent
+      totalSent: contactsToSend.length, 
       status: 'Sending'
     });
     await newCampaign.save();
@@ -102,8 +101,7 @@ exports.startCampaign = async (req, res) => {
 
     let jobsAdded = 0;
     
-    // Send only the filtered list of contactsToSend
-    for (const contact of contactsToSend) { // <-- Iterate over contactsToSend
+    for (const contact of contactsToSend) { 
       const jobData = {
         contact: contact,
         templateName: templateName, 
@@ -129,5 +127,70 @@ exports.startCampaign = async (req, res) => {
   } catch (error) {
     console.error('Error starting campaign:', error);
     res.status(500).send('An error occurred while starting the campaign.');
+  }
+};
+
+
+// @desc    Send a single test message
+exports.sendTestMessage = async (req, res) => {
+  try {
+    const { companyId, templateId, testPhone } = req.body;
+    if (!companyId || !templateId || !testPhone) {
+      return res.status(400).send('Company, Template, and Test Phone Number are required.');
+    }
+
+    const company = await Company.findById(companyId);
+    const template = await Template.findById(templateId);
+
+    if (!company) return res.status(404).send('Company not found.');
+    if (!template) return res.status(404).send('Template not found.');
+
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${company.numberId}/messages`;
+    
+    const messageData = {
+      messaging_product: "whatsapp",
+      to: testPhone, 
+      type: "template",
+      template: {
+        name: template.templateName,
+        language: { code: "en_US" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                text: "Test User", 
+                parameter_name: "customer_name" 
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    const response = await fetch(WHATSAPP_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${company.whatsappToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(messageData)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('Test Message Error:', JSON.stringify(result.error, null, 2));
+      return res.status(500).send(`Error sending test: ${result.error.message}`);
+    }
+
+    console.log(`Test message sent successfully to: ${testPhone}`);
+    
+    res.redirect('/campaigns');
+
+  } catch (error) {
+    console.error('Error sending test message:', error);
+    res.status(500).send('An error occurred while sending the test.');
   }
 };

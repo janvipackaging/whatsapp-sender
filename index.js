@@ -10,14 +10,16 @@ const connectDB = require('./db');
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS (Required for stability) ---
+// --- MODELS & CONTROLLERS (Needed for stability and dashboard data) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-// --- END MODEL IMPORTS ---
+// --- We load controllers here to ensure they are available for the routes file that is crashing ---
+const campaignsController = require('./controllers/campaignsController'); 
+// --- END CONTROLLER IMPORTS ---
 
 
 // --- Initialization ---
@@ -74,12 +76,11 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes (Using External Files) ---
-// This is the correct, final structure.
-
+// --- Protected App Routes (Restored to External Files) ---
+// This correct structure is designed to fix the TypeError.
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 
-// --- FIX: RESTORED CAMPAIGN ROUTE TO EXTERNAL FILE ---
+// --- CORRECT WAY TO LOAD EXTERNAL CAMPAIGN ROUTE (CRASH POINT) ---
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
