@@ -41,6 +41,11 @@
       width: 100%;
       box-sizing: border-box;
     }
+    .alert-warning {
+      background-color: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+    }
     .alert-error {
       background-color: #f8d7da;
       color: #842029;
@@ -51,15 +56,26 @@
 <body>
 
   <div class="register-container">
-    <h1>Register</h1>
+    <h1>Create Account Request</h1>
 
- <% if (typeof error !== 'undefined' && error) { %>
+    <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-error">
         <%= error %>
       </div>
     <% } %>
+    
+    <div class="alert alert-warning">
+      Registration requires manual approval by the Super-Admin.
+    </div>
 
     <form action="/users/register" method="POST">
+      <div>
+        <label>Account will be linked to:</label>
+        <div class="alert alert-success" style="padding: 10px; margin-bottom: 0;">
+          **<%= company.name %>**
+        </div>
+        <input type="hidden" name="companyId" value="<%= company._id %>">
+      </div>
       <div>
         <label for="username">Username:</label>
         <input type="text" name="username" id="username" required>
@@ -72,7 +88,7 @@
         <label for="password2">Confirm Password:</label>
         <input type="password" name="password2" id="password2" required>
       </div>
-      <button type="submit">Register</button>
+      <button type="submit">Submit Account Request</button>
     </form>
     <p>
       Already have an account? <a href="/users/login">Login</a>

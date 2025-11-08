@@ -1,5 +1,4 @@
 const LocalStrategy = require('passport-local').Strategy;
-const bcrypt = require('bcryptjs');
 const User = require('../models/User'); // Import your User model
 
 module.exports = function(passport) {
@@ -9,17 +8,22 @@ module.exports = function(passport) {
         // 1. Find the user in the database by their username
         const user = await User.findOne({ username: username });
         if (!user) {
-          // If no user is found, return an error message
+          // User not found
           return done(null, false, { message: 'That username is not registered' });
         }
 
-        // 2. If user is found, check their password
+        // 2. Check the user's approval status
+        if (!user.isApproved) { // <-- NEW APPROVAL CHECK
+            return done(null, false, { message: 'Your account is still pending Admin approval.' });
+        }
+
+        // 3. If user is approved, check their password
         const isMatch = await user.matchPassword(password);
         if (isMatch) {
-          // If password is correct, return the user
+          // Success! User is approved and password is correct.
           return done(null, user);
         } else {
-          // If password is incorrect, return an error message
+          // Password incorrect
           return done(null, false, { message: 'Password incorrect' });
         }
       } catch (err) {
@@ -30,12 +34,10 @@ module.exports = function(passport) {
   );
 
   // These two functions are required by Passport
-  // They save the user's ID to the session
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
-  // They get the user's ID from the session to log them in
   passport.deserializeUser(async (id, done) => {
     try {
       const user = await User.findById(id);

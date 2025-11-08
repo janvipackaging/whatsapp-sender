@@ -35,25 +35,17 @@
     
     h1, h2 { color: #333; }
     
-    /* --- NEW --- Alert Box Styling */
+    /* Alert Box Styling */
     .alert {
       padding: 15px;
       margin-bottom: 20px;
       border-radius: 5px;
       font-weight: 500;
+      max-width: 95%; /* Adjust width */
     }
-    .alert-success {
-      background-color: #d1e7dd;
-      color: #0f5132;
-      border: 1px solid #badbcc;
-    }
-    .alert-error {
-      background-color: #f8d7da;
-      color: #842029;
-      border: 1px solid #f5c2c7;
-    }
-    /* --- END NEW --- */
-
+    .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    
     /* Grid for Widgets */
     .dashboard-grid {
       display: grid;
@@ -82,10 +74,10 @@
       margin: 5px 0 0 0;
     }
     
-    /* Main Content Grid */
+    /* Main Content Grid (2 columns) */
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr; 
       grid-gap: 25px;
     }
     
@@ -97,40 +89,27 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
     
-    /* Inbox Widget */
-    .inbox-list { list-style-type: none; padding: 0; }
-    .inbox-item { border-bottom: 1px solid #eee; padding: 10px 0; }
-    .inbox-item:last-child { border: 0; }
-    .inbox-item-contact { font-weight: 600; }
-    .inbox-item-body { color: #555; margin: 5px 0; }
-    
-    /* Campaign Report Widget */
-    .report-item { display: flex; justify-content: space-between; font-size: 1.1em; padding: 8px 0; }
-    .report-item-label { font-weight: 600; }
-    .report-item-value { color: #333; }
-
-    /* Quick Add Form */
-    form div { margin-bottom: 20px; }
-    form label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-    form input[type="text"], form input[type="tel"], form select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
+    /* Pending Users Widget */
+    .pending-user-item { 
+      border-bottom: 1px solid #eee; 
+      padding: 10px 0; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pending-user-item:last-child { border: 0; }
+    .btn-approve {
+      padding: 5px 10px;
+      background-color: #28a745;
+      color: white;
       border-radius: 5px;
-      box-sizing: border-box; 
+      text-decoration: none;
+      font-size: 0.9em;
     }
-    form button { 
-      padding: 12px 20px; 
-      background-color: #007bff; 
-      color: white; 
-      border-radius: 5px; 
-      border: none;
-      font-size: 1em;
-      cursor: pointer;
-    }
-    form button:hover { background-color: #0056b3; }
+    .btn-approve:hover { background-color: #218838; }
 
-    /* Responsive */
+    /* Quick Add Form Styles (Already exists) */
+
     @media (max-width: 900px) {
       .dashboard-grid { grid-template-columns: 1fr; }
       .content-grid { grid-template-columns: 1fr; }
@@ -145,6 +124,7 @@
     <a href="/templates">Manage Templates</a>
     <a href="/reports">Campaign Reports</a>
     <a href="/inbox">View Inbox</a>
+    <a href="/users/logout" style="background-color: #dc3545; float: right;">Log Out</a>
   </nav>
 
   <div class="container">
@@ -159,6 +139,7 @@
         <%= error_msg %>
       </div>
     <% } %>
+
     <h1>Dashboard</h1>
 
     <div class="dashboard-grid">
@@ -179,6 +160,22 @@
     <div class="content-grid">
 
       <div>
+        
+        <div class="widget" style="background-color: #fff3cd; border: 1px solid #ffecb5; margin-bottom: 25px;">
+          <h2>🚨 Pending Approvals</h2>
+          <ul class="inbox-list">
+            <% if (pendingUsers.length > 0) { %>
+              <% pendingUsers.forEach(function(user) { %>
+                <li class="pending-user-item">
+                  <span><%= user.username %> (<%= user.company ? user.company.name : 'N/A' %>)</span>
+                  <a href="/users/approve/<%= user._id %>" class="btn-approve">Approve</a>
+                </li>
+              <% }); %>
+            <% } else { %>
+              <li style="color: #664d03;">No users waiting for approval.</li>
+            <% } %>
+          </ul>
+        </div>
         <div class="widget">
           <h2>Recent Unread Messages</h2>
           <ul class="inbox-list">

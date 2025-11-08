@@ -1,34 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-
-// We will create this controller file next
 const usersController = require('../controllers/usersController');
+const { isAuthenticated } = require('../config/auth'); // Import protection middleware
 
 // --- Define Routes ---
 
-// @route   GET /users/login
-// @desc    Show the login page
+// @route   GET /users/login & POST /users/login
 router.get('/login', usersController.getLoginPage);
-
-// @route   POST /users/login
-// @desc    Handle the login form submission
 router.post('/login', passport.authenticate('local', {
-  successRedirect: '/', // On success, go to the main dashboard
-  failureRedirect: '/users/login', // On failure, stay on the login page
-  failureFlash: true // Use flash messages for errors
+  successRedirect: '/', 
+  failureRedirect: '/users/login', 
+  failureFlash: true 
 }));
 
-// @route   GET /users/register
-// @desc    Show the registration page (for creating the first user)
+// @route   GET /users/register & POST /users/register
+// NOTE: This is now PUBLIC to allow new users to submit a request
 router.get('/register', usersController.getRegisterPage);
-
-// @route   POST /users/register
-// @desc    Handle the registration form submission
 router.post('/register', usersController.registerUser);
 
+// @route   GET /users/pending
+// @desc    Page for users waiting for approval (PUBLIC)
+router.get('/pending', usersController.getPendingPage); // <-- NEW ROUTE
+
+// @route   GET /users/approve/:id
+// @desc    Secured route for the Admin to click "Approve" (PROTECTED)
+router.get('/approve/:id', isAuthenticated, usersController.approveUser); // <-- NEW ROUTE
+
 // @route   GET /users/logout
-// @desc    Handle logging out
 router.get('/logout', usersController.logoutUser);
 
 module.exports = router;

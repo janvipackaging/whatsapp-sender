@@ -51,6 +51,11 @@
       color: #842029;
       border: 1px solid #f5c2c7;
     }
+    .alert-warning {
+      background-color: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+    }
   </style>
 </head>
 <body>
@@ -63,14 +68,23 @@
         <%= success_msg %>
       </div>
     <% } %>
-    <% if (error_msg && error_msg.length > 0) { %>
-      <div class="alert alert-error">
-        <%= error_msg %>
-      </div>
-    <% } %>
+
     <% if (error && error.length > 0) { %>
       <div class="alert alert-error">
         <%= error %>
+      </div>
+    <% } %>
+
+    <% if (error_msg && error_msg.length > 0) { %>
+        <% 
+            const isUnapproved = error_msg.includes('is still pending');
+            const alertClass = isUnapproved ? 'alert-warning' : 'alert-error';
+        %>
+      <div class="alert <%= alertClass %>">
+        <%= error_msg %>
+        <% if (isUnapproved) { %>
+            <p style="margin-top: 10px;">Please check back later or contact the admin.</p>
+        <% } %>
       </div>
     <% } %>
 
@@ -86,7 +100,7 @@
       <button type="submit">Login</button>
     </form>
     <p>
-      Don't have an account? <a href="/users/register">Register</a>
+      Need an account? <a href="/users/register">Register Here</a>
     </p>
   </div>
 

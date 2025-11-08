@@ -3,19 +3,20 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const flash = require('express-flash');
-const passport = require('passport'); // <-- 1. NEW IMPORT
+const passport = require('passport');
 const connectDB = require('./db'); 
 
-// --- Configs ---
-require('./config/passport')(passport); // <-- 2. LOAD PASSPORT CONFIG
-const { isAuthenticated } = require('./config/auth'); // <-- 3. IMPORT PAGE PROTECTION
-
-// --- Models (for Dashboard) ---
+// --- Models ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
+const User = require('./models/User'); // <-- IMPORT USER MODEL
+
+// --- Configs ---
+require('./config/passport')(passport); 
+const { isAuthenticated } = require('./config/auth'); 
 
 // --- Initialization ---
 const app = express();
@@ -27,58 +28,60 @@ connectDB();
 // --- Middleware ---
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
-app.use(express.json()); // For QStash & Webhooks
+app.use(express.json()); 
 
-// --- 4. ADD SESSION & PASSPORT MIDDLEWARE ---
-// This must be *before* your routes
+// --- ADD SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 60000 } // Flash message cookie
+  cookie: { maxAge: 60000 }
 }));
 
-// Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Flash middleware
 app.use(flash());
 // --- END OF NEW MIDDLEWARE ---
 
 // --- Routes ---
 
-// --- 5. NEW PUBLIC USER ROUTES ---
-// These routes are *public* (you don't need to be logged in)
-app.use('/users', require('./routes/users'));
-
-// --- 6. PROTECTED APPLICATION ROUTES ---
-// All routes below this point will *require* the user to be logged in.
-// We add 'isAuthenticated' to every single route we want to protect.
-
 // @route   GET /
 // @desc    Show the main "True Dashboard" (NOW PROTECTED)
-app.get('/', isAuthenticated, async (req, res) => { // <-- Added 'isAuthenticated'
+app.get('/', isAuthenticated, async (req, res) => {
   try {
+    // 1. Get At-a-Glance Stats
     const totalContacts = await Contact.countDocuments();
     const totalCampaigns = await Campaign.countDocuments();
     const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
+
+    // 2. Get Inbox Summary
     const recentMessages = await Message.find({ isRead: false, direction: 'inbound' })
       .sort({ createdAt: -1 })
       .limit(3)
       .populate('contact', 'name phone');
+      
+    // 3. Get Last Campaign Report
     const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 });
+
+    // 4. Get Data for the "Quick Add" form
     const companies = await Company.find();
     const segments = await Segment.find();
+    
+    // 5. GET PENDING USERS FOR APPROVAL WIDGET (NEW LOGIC)
+    const pendingUsers = await User.find({ isApproved: false })
+      .populate('company', 'name'); // Fetch the company name for the widget
 
+    // 6. Render the dashboard with all this data
     res.render('index', { 
       totalContacts,
       totalCampaigns,
       totalUnread,
       recentMessages,
       lastCampaign,
-      companies,
+      companies, 
       segments,
+      pendingUsers, // <-- PASS PENDING USERS TO EJS
       success_msg: req.flash('success_msg'),
       error_msg: req.flash('error_msg')
     });
@@ -89,15 +92,28 @@ app.get('/', isAuthenticated, async (req, res) => { // <-- Added 'isAuthenticate
   }
 });
 
-// All other app routes are also protected
-app.use('/contacts', isAuthenticated, require('./routes/contacts'));
-app.use('/campaigns', isAuthenticated, require('./routes/campaigns'));
-app.use('/templates', isAuthenticated, require('./routes/templates')); 
-app.use('/reports', isAuthenticated, require('./routes/reports')); 
-app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 
-// The API routes do not need user login, they are protected by webhooks/tokens
-app.use('/api', require('./routes/api')); 
+// --- Other Routes ---
+const contactRoutes = require('./routes/contacts');
+app.use('/contacts', isAuthenticated, contactRoutes);
+
+const campaignRoutes = require('./routes/campaigns');
+app.use('/campaigns', isAuthenticated, campaignRoutes);
+
+const templateRoutes = require('./routes/templates'); 
+app.use('/templates', isAuthenticated, templateRoutes);
+
+const reportRoutes = require('./routes/reports'); 
+app.use('/reports', isAuthenticated, reportRoutes);
+
+const inboxRoutes = require('./routes/inbox'); 
+app.use('/inbox', isAuthenticated, inboxRoutes);
+
+const apiRoutes = require('./routes/api'); 
+app.use('/api', apiRoutes);
+
+const userMiddleRoutes = require('./routes/users');
+app.use('/users', userMiddleRoutes);
 
 // --- Start Server ---
 app.listen(PORT, () => {

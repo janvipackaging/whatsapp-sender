@@ -1,10 +1,9 @@
 const User = require('../models/User');
-const Company = require('../models/Company'); // New Import
+const Company = require('../models/Company');
 const passport = require('passport');
 
 // Helper function to find the first company (Janvi Packaging)
 const findDefaultCompany = async () => {
-  // Assuming Janvi Packaging is the first company created in the database
   const company = await Company.findOne().sort({ createdAt: 1 });
   if (!company) {
     throw new Error("CRITICAL ERROR: No Company found in database. Please add a Company in MongoDB Compass first.");
@@ -21,24 +20,20 @@ exports.getLoginPage = (req, res) => {
   });
 };
 
-// @desc    Show the registration page
+// @desc    Show the pending approval page
+exports.getPendingPage = (req, res) => {
+  res.render('pending'); // <-- NEW FUNCTION
+};
+
+
+// @desc    Show the registration page (NO LONGER DISABLED)
 exports.getRegisterPage = async (req, res) => {
   try {
-    // Check if any user exists. If yes, registration is disabled (404).
-    const userCount = await User.countDocuments();
-    if (userCount > 0) {
-      // You must implement the 'Pending' page redirection here later.
-      // For now, we will just show a standard message.
-      return res.send(`<h2>Registration Disabled</h2>
-                       <p>Admin registration is complete. Please log in.</p>
-                       <a href="/users/login">Go to Login</a>`);
-    }
-    
     // Pass the company details for the form
     const company = await findDefaultCompany();
     res.render('register', {
       error: null,
-      company: company // Pass company details to the view
+      company: company
     });
   } catch (error) {
     console.error('Error loading register page:', error);
@@ -46,45 +41,76 @@ exports.getRegisterPage = async (req, res) => {
   }
 };
 
+
 // @desc    Handle new user registration
 exports.registerUser = async (req, res) => {
   try {
-    const { username, password, password2 } = req.body;
+    const { username, password, password2, companyId } = req.body; // companyId is now from the form
 
-    // Check if Super-Admin already exists (Security Gate)
-    const userCount = await User.countDocuments();
-    if (userCount > 0) {
-      return res.status(403).send("Registration is closed.");
-    }
-    
-    // --- Validation and Setup ---
+    // --- Validation ---
     if (password !== password2) {
-      return res.render('register', { error: 'Passwords do not match' });
+      const company = await findDefaultCompany();
+      return res.render('register', { error: 'Passwords do not match', company });
     }
     if (password.length < 6) {
-      return res.render('register', { error: 'Password must be at least 6 characters' });
+      const company = await findDefaultCompany();
+      return res.render('register', { error: 'Password must be at least 6 characters', company });
     }
-    const company = await findDefaultCompany();
+    
+    const existingUser = await User.findOne({ username: username });
+    if (existingUser) {
+      const company = await findDefaultCompany();
+      return res.render('register', { error: 'That username is already taken', company });
+    }
 
-    // Create the new user. First user is auto-approved as Admin.
+    // Determine approval status: ONLY the first user is auto-approved (Super-Admin)
+    const userCount = await User.countDocuments();
+    const isApproved = userCount === 0; 
+    const userRole = userCount === 0 ? 'admin' : 'user';
+
+    // Create the new user.
     const newUser = new User({
       username: username,
-      password: password, // Will be auto-hashed by User model
-      company: company._id,
-      isApproved: true, // Auto-approve the first user (Super-Admin)
-      role: 'admin'
+      password: password, 
+      company: companyId, // Assign company from the form
+      isApproved: isApproved, // <-- FALSE for subsequent users
+      role: userRole
     });
 
     await newUser.save(); 
 
-    req.flash('success_msg', 'Admin account created successfully! Please log in.');
-    res.redirect('/users/login');
+    if (isApproved) {
+        req.flash('success_msg', 'Super-Admin account created successfully! Please log in.');
+        res.redirect('/users/login');
+    } else {
+        req.flash('success_msg', 'Registration submitted. Awaiting Admin approval.');
+        res.redirect('/users/pending'); // <-- Redirect to pending page
+    }
 
   } catch (error) {
     console.error('Error during registration:', error);
     res.render('register', { error: 'Something went wrong. Please try again.' });
   }
 };
+
+
+// @desc    Admin Approval Action
+exports.approveUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        
+        // Find the user and set approval to true
+        await User.findByIdAndUpdate(userId, { isApproved: true });
+        
+        req.flash('success_msg', 'User approved successfully!');
+        res.redirect('/'); // Go back to the dashboard
+    } catch (error) {
+        console.error('Error approving user:', error);
+        req.flash('error_msg', 'Could not approve user.');
+        res.redirect('/');
+    }
+};
+
 
 // @desc    Handle user logout
 exports.logoutUser = (req, res, next) => {
