@@ -12,7 +12,7 @@ const Campaign = require('./models/Campaign');
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
-const User = require('./models/User'); // <-- IMPORT USER MODEL
+const User = require('./models/User'); 
 
 // --- Configs ---
 require('./config/passport')(passport); 
@@ -68,9 +68,9 @@ app.get('/', isAuthenticated, async (req, res) => {
     const companies = await Company.find();
     const segments = await Segment.find();
     
-    // 5. GET PENDING USERS FOR APPROVAL WIDGET (NEW LOGIC)
+    // 5. GET PENDING USERS FOR APPROVAL WIDGET
     const pendingUsers = await User.find({ isApproved: false })
-      .populate('company', 'name'); // Fetch the company name for the widget
+      .populate('company', 'name'); 
 
     // 6. Render the dashboard with all this data
     res.render('index', { 
@@ -81,7 +81,7 @@ app.get('/', isAuthenticated, async (req, res) => {
       lastCampaign,
       companies, 
       segments,
-      pendingUsers, // <-- PASS PENDING USERS TO EJS
+      pendingUsers,
       success_msg: req.flash('success_msg'),
       error_msg: req.flash('error_msg')
     });
@@ -93,27 +93,24 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Other Routes ---
-const contactRoutes = require('./routes/contacts');
-app.use('/contacts', isAuthenticated, contactRoutes);
+// --- Other Protected App Routes ---
+app.use('/contacts', isAuthenticated, require('./routes/contacts'));
+app.use('/campaigns', isAuthenticated, require('./routes/campaigns'));
+app.use('/templates', isAuthenticated, require('./routes/templates')); 
+app.use('/reports', isAuthenticated, require('./routes/reports')); 
+app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 
-const campaignRoutes = require('./routes/campaigns');
-app.use('/campaigns', isAuthenticated, campaignRoutes);
+// --- ADD THE BLOCKLIST ROUTE HERE ---
+const blocklistRoutes = require('./routes/blocklist'); 
+app.use('/blocklist', isAuthenticated, blocklistRoutes); // <-- NEW LINE
 
-const templateRoutes = require('./routes/templates'); 
-app.use('/templates', isAuthenticated, templateRoutes);
-
-const reportRoutes = require('./routes/reports'); 
-app.use('/reports', isAuthenticated, reportRoutes);
-
-const inboxRoutes = require('./routes/inbox'); 
-app.use('/inbox', isAuthenticated, inboxRoutes);
-
+// --- Public/API Routes ---
 const apiRoutes = require('./routes/api'); 
 app.use('/api', apiRoutes);
 
 const userMiddleRoutes = require('./routes/users');
 app.use('/users', userMiddleRoutes);
+
 
 // --- Start Server ---
 app.listen(PORT, () => {

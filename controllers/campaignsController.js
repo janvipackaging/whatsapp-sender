@@ -3,8 +3,9 @@ const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
 const Campaign = require('../models/Campaign');
 const Template = require('../models/Template');
+const Blocklist = require('../models/Blocklist'); // <-- 1. NEW IMPORT
 const { Client } = require("@upstash/qstash");
-const fetch = require('node-fetch'); // <-- 1. NEW IMPORT
+const fetch = require('node-fetch'); 
 require('dotenv').config();
 
 const qstashClient = new Client({
@@ -51,23 +52,48 @@ exports.startCampaign = async (req, res) => {
     }
     const templateName = template.templateName; 
 
-    const contacts = await Contact.find({
+    // 2. Fetch all contacts from the segment
+    const segmentContacts = await Contact.find({
       company: companyId,
       segments: segmentId
     });
 
-    if (contacts.length === 0) {
+    if (segmentContacts.length === 0) {
       return res.send(`<h2>No Contacts Found</h2>
                        <p>No contacts were found for that company and segment combination.</p>
                        <a href="/campaigns">Try Again</a>`);
     }
+    
+    // --- 3. BLOCKLIST CHECK LOGIC (NEW) ---
+    // Fetch all blocked numbers for this specific company
+    const blockedNumbersDocs = await Blocklist.find({ company: companyId });
+    const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
+    
+    let contactsToSend = [];
+    let blockedCount = 0;
+
+    // Filter out contacts whose phone number is in the blocked list
+    segmentContacts.forEach(contact => {
+        if (blockedPhones.has(contact.phone)) {
+            blockedCount++;
+        } else {
+            contactsToSend.push(contact);
+        }
+    });
+
+    if (contactsToSend.length === 0) {
+      return res.send(`<h2>Campaign Blocked</h2>
+                       <p>All ${segmentContacts.length} contacts were found in the blocklist.</p>
+                       <a href="/campaigns">Try Again</a>`);
+    }
+    // --- END BLOCKLIST CHECK ---
 
     const newCampaign = new Campaign({
       name: template.name, 
       company: companyId,
       segment: segmentId,
       templateName: templateName, 
-      totalSent: contacts.length,
+      totalSent: contactsToSend.length, // <-- Update to show actual number sent
       status: 'Sending'
     });
     await newCampaign.save();
@@ -76,7 +102,8 @@ exports.startCampaign = async (req, res) => {
 
     let jobsAdded = 0;
     
-    for (const contact of contacts) {
+    // Send only the filtered list of contactsToSend
+    for (const contact of contactsToSend) { // <-- Iterate over contactsToSend
       const jobData = {
         contact: contact,
         templateName: templateName, 
@@ -95,86 +122,12 @@ exports.startCampaign = async (req, res) => {
 
     res.send(`<h2>Campaign Started!</h2>
               <p>Successfully added ${jobsAdded} messages to the QStash queue.</p>
+              ${blockedCount > 0 ? `<p style="color: red;">Note: ${blockedCount} contacts were skipped due to the blocklist.</p>` : ''}
               <p>A new report has been created for this campaign.</p>
               <a href="/campaigns">Start Another Campaign</a>`);
 
   } catch (error) {
     console.error('Error starting campaign:', error);
     res.status(500).send('An error occurred while starting the campaign.');
-  }
-};
-
-
-// ---
-// --- 2. THIS IS THE NEW FUNCTION ---
-// ---
-// @desc    Send a single test message
-exports.sendTestMessage = async (req, res) => {
-  try {
-    const { companyId, templateId, testPhone } = req.body;
-
-    // 1. Validate input
-    if (!companyId || !templateId || !testPhone) {
-      return res.status(400).send('Company, Template, and Test Phone Number are required.');
-    }
-
-    // 2. Get Company and Template details
-    const company = await Company.findById(companyId);
-    const template = await Template.findById(templateId);
-
-    if (!company) return res.status(404).send('Company not found.');
-    if (!template) return res.status(404).send('Template not found.');
-
-    // 3. Build the same payload as our apiController
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${company.numberId}/messages`;
-    
-    const messageData = {
-      messaging_product: "whatsapp",
-      to: testPhone, // Send to the test phone number
-      type: "template",
-      template: {
-        name: template.templateName,
-        language: { code: "en_US" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                // For a test, we can just send "Test" as the variable
-                text: "Test User", 
-                parameter_name: "customer_name" 
-              }
-            ]
-          }
-        ]
-      }
-    };
-
-    // 4. Send the message directly
-    const response = await fetch(WHATSAPP_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${company.whatsappToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(messageData)
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('Test Message Error:', JSON.stringify(result.error, null, 2));
-      return res.status(500).send(`Error sending test: ${result.error.message}`);
-    }
-
-    console.log(`Test message sent successfully to: ${testPhone}`);
-    
-    // 5. Redirect back to the campaign page
-    res.redirect('/campaigns');
-
-  } catch (error) {
-    console.error('Error sending test message:', error);
-    res.status(500).send('An error occurred while sending the test.');
   }
 };
