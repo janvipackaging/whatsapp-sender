@@ -12,7 +12,7 @@ const upload = multer({ dest: '/tmp/' });
 // Note: 'isAuthenticated' is already applied in index.js for '/contacts'
 
 // @route   GET /
-// @desc    Show the main contacts "Master List" page
+// @desc    Show the main contacts "Master List" page (with search)
 router.get('/', contactsController.getContactsPage);
 
 // @route   POST /import

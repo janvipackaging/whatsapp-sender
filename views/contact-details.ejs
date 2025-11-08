@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contact Profile</title>
+  <title>Contact Profile: <%= contact.name %></title>
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background-color: #f4f7f6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
     h1, h2 { color: #333; }
     a { color: #007bff; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    .breadcrumb { margin-bottom: 20px; font-size: 1.1em; }
 
     /* Layout */
-    .container { max-width: 1100px; margin: 0 auto; }
     .profile-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr; /* Two equal columns */
       gap: 30px;
     }
     .widget {
@@ -31,6 +32,11 @@
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
     /* Edit Form Styling */
+    form .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
     form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
@@ -38,9 +44,10 @@
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 5px;
-      box-sizing: border-box; 
+      box-sizing: border-box; /* Important */
+      font-size: 0.95em;
     }
-    textarea { min-height: 100px; }
+    textarea { min-height: 100px; font-family: inherit; }
     button { 
       padding: 12px 20px; 
       background-color: #007bff; 
@@ -48,38 +55,50 @@
       border-radius: 5px; 
       border: none;
       font-size: 1em;
+      font-weight: 600;
       cursor: pointer;
     }
     button:hover { background-color: #0056b3; }
 
     /* Activity Log Styling */
-    .activity-list { list-style-type: none; padding: 0; }
+    .activity-list { list-style-type: none; padding: 0; max-height: 800px; overflow-y: auto; }
     .activity-item {
       position: relative;
-      padding-left: 25px;
-      padding-bottom: 20px;
-      border-left: 2px solid #ddd;
+      padding-left: 30px;
+      padding-bottom: 25px;
+      border-left: 2px solid #e0e0e0;
     }
-    .activity-item:before {
+    .activity-item:before { /* The timeline dot */
       content: '';
       position: absolute;
-      left: -6px;
+      left: -9px; /* Centered on the line */
       top: 5px;
-      width: 10px;
-      height: 10px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background-color: #007bff;
+      border: 3px solid #fff;
     }
-    .activity-item strong { color: #333; }
-    .activity-item span { font-size: 0.9em; color: #777; display: block; margin-bottom: 5px; }
+    .activity-item:first-child:before { background-color: #28a745; } /* Highlight newest item */
+    .activity-item strong { color: #333; font-size: 1.05em; }
+    .activity-item span { font-size: 0.85em; color: #777; display: block; margin-bottom: 8px; }
+    .activity-item p { margin: 5px 0 0 0; color: #555; }
 
+    @media (max-width: 900px) {
+      .profile-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h1>Contact: <%= contact.name %></h1>
-    <p><a href="/contacts">&larr; Back to Master List</a></p>
+    <div class="breadcrumb">
+      <a href="/contacts">&larr; Back to Master Contact List</a>
+    </div>
+    <h1><%= contact.name %></h1>
+    <p style="margin-top: -10px; font-size: 1.1em; color: #555;">
+      <%= contact.jobTitle || 'No title' %> at <%= contact.companyName || 'No company' %>
+    </p>
 
     <% if (success_msg && success_msg.length > 0) { %>
       <div class="alert alert-success"><%= success_msg %></div>
@@ -91,9 +110,9 @@
     <div class="profile-grid">
       
       <div class="widget">
-        <h2>Edit Profile</h2>
+        <h2>Contact Details</h2>
         <form action="/contacts/update/<%= contact._id %>" method="POST">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-grid">
             <div>
               <label for="name">Name (Required):</label>
               <input type="text" name="name" id="name" value="<%= contact.name %>" required>
@@ -107,7 +126,7 @@
             <label for="email">Email:</label>
             <input type="email" name="email" id="email" value="<%= contact.email || '' %>">
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-grid">
             <div>
               <label for="city">City:</label>
               <input type="text" name="city" id="city" value="<%= contact.city || '' %>">
@@ -117,7 +136,7 @@
               <input type="text" name="companyName" id="companyName" value="<%= contact.companyName || '' %>">
             </div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-grid">
             <div>
               <label for="jobTitle">Job Title:</label>
               <input type="text" name="jobTitle" id="jobTitle" value="<%= contact.jobTitle || '' %>">
@@ -127,7 +146,7 @@
               <input type="text" name="productInterest" id="productInterest" value="<%= contact.productInterest || '' %>">
             </div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-grid">
             <div>
               <label for="leadSource">Lead Source:</label>
               <input type="text" name="leadSource" id="leadSource" value="<%= contact.leadSource || '' %>">
@@ -159,18 +178,12 @@
             <% activityLog.forEach(function(activity) { %>
               <li class="activity-item">
                 <span><%= new Date(activity.date).toLocaleString() %></span>
-                <% if (activity.type === 'Reply') { %>
-                  <strong>Customer Replied:</strong>
-                  <p>"<%= activity.body %>"</p>
-                <% } else { %>
-                  <strong>Message <%= activity.status %></strong>
-                  <p><%= activity.body %></p>
-                <% } %>
+                <strong><%= activity.body %></strong>
               </li>
             <% }); %>
           <% } else { %>
-            <li class="activity-item">
-              <strong>No activity found.</strong>
+            <li class="activity-item" style="border-left: none;">
+              <strong style="padding-left: 0;">No activity found for this contact.</strong>
             </li>
           <% } %>
         </ul>

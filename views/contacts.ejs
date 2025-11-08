@@ -53,6 +53,8 @@
     .btn-green:hover { background-color: #218838; }
     .btn-grey { background-color: #6c757d; }
     .btn-grey:hover { background-color: #5a6268; }
+    .btn-blue { background-color: #007bff; }
+    .btn-blue:hover { background-color: #0056b3; }
 
     /* Filter Form */
     .filter-form {
@@ -61,11 +63,13 @@
       border-radius: 8px;
       margin-bottom: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr 2fr 1fr; /* 4 columns */
       gap: 20px;
       align-items: flex-end;
     }
     .filter-group { flex-grow: 1; }
+    .filter-group label { margin-bottom: 5px; font-size: 0.9em; }
 
     /* Table Styling */
     .table-widget { background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow-x: auto; }
@@ -85,7 +89,10 @@
 
     @media (max-width: 900px) {
       .management-section { grid-template-columns: 1fr; }
-      .filter-form { flex-direction: column; align-items: stretch; }
+      .filter-form { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .filter-form { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -165,7 +172,7 @@
     <form action="/contacts" method="GET" class="filter-form">
       <div class="filter-group">
         <label for="companyId-filter">Filter by Company:</label>
-        <select name="companyId" id="companyId-filter" onchange="this.form.submit()">
+        <select name="companyId" id="companyId-filter">
           <option value="">All Companies</option>
           <% companies.forEach(function(company) { %>
             <option value="<%= company._id %>" <%= selectedCompany == company._id ? 'selected' : '' %>>
@@ -176,7 +183,7 @@
       </div>
       <div class="filter-group">
         <label for="segmentId-filter">Filter by Segment:</label>
-        <select name="segmentId" id="segmentId-filter" onchange="this.form.submit()">
+        <select name="segmentId" id="segmentId-filter">
           <option value="">All Segments</option>
           <% segments.forEach(function(segment) { %>
             <option value="<%= segment._id %>" <%= selectedSegment == segment._id ? 'selected' : '' %>>
@@ -185,9 +192,12 @@
           <% }); %>
         </select>
       </div>
-      <button type="submit" class="btn-blue">Filter</button>
+      <div class="filter-group">
+        <label for="search">Search by Name, Phone, or Email:</label>
+        <input type="text" name="search" id="search" placeholder="Enter search term..." value="<%= searchTerm || '' %>">
+      </div>
+      <button type="submit" class="btn-blue">Search / Filter</button>
     </form>
-
     <div class="table-widget">
       <table>
         <thead>
