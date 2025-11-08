@@ -57,15 +57,18 @@ exports.sendMessage = async (req, res) => {
       return res.status(500).json({ success: false, error: result.error.message });
     }
 
-    // 6. If it succeeds, log it.
+    // 6. If it succeeds, get the message ID
     const messageId = result.messages[0].id; // This is the 'wamid'
     console.log(`Message sent successfully to: ${contact.phone} (wamid: ${messageId})`);
 
     // --- 7. NEW: SAVE OUTBOUND MESSAGE ---
     // This is the CRITICAL step for tracking 'read' status
     if (campaignId) {
+      // Find the company's _id
+      const company = await Company.findOne({ numberId: companyNumberId });
+      
       const newMessage = new Message({
-        company: companyToken.company, // Assuming companyId is passed
+        company: company ? company._id : null,
         contact: contact._id,
         campaign: campaignId,
         waMessageId: messageId,
@@ -118,27 +121,32 @@ exports.handleWebhook = async (req, res) => {
     const body = req.body;
     if (body.object === "whatsapp_business_account") {
       
-      const entry = body.entry[0];
-      if (entry.changes) {
-        const change = entry.changes[0];
-        const value = change.value;
+      if (body.entry && body.entry.length > 0) {
+        body.entry.forEach((entry) => {
+          if (entry.changes && entry.changes.length > 0) {
+            const change = entry.changes[0];
+            if (change.value) {
+              const value = change.value;
 
-        // --- HANDLE CUSTOMER REPLIES (INBOX) ---
-        if (value.messages) {
-          const message = value.messages[0];
-          if (message.type === "text") {
-            console.log(`New reply from ${message.from}: ${message.text.body}`);
-            saveIncomingMessage(value.metadata.phone_number_id, message);
+              // --- HANDLE CUSTOMER REPLIES (INBOX) ---
+              if (value.messages) {
+                const message = value.messages[0];
+                if (message.type === "text") {
+                  console.log(`New reply from ${message.from}: ${message.text.body}`);
+                  saveIncomingMessage(value.metadata.phone_number_id, message);
+                }
+              }
+
+              // --- HANDLE ANALYTICS (DELIVERED, READ) ---
+              if (value.statuses) {
+                const statusUpdate = value.statuses[0];
+                updateCampaignStatus(statusUpdate);
+              }
+            }
           }
-        }
-
-        // --- HANDLE ANALYTICS (DELIVERED, READ) ---
-        if (value.statuses) {
-          const statusUpdate = value.statuses[0];
-          updateCampaignStatus(statusUpdate);
-        }
+        });
       }
-
+      
       // Send a 200 OK to WhatsApp to say we received it
       res.status(200).send("EVENT_RECEIVED");
 
@@ -201,33 +209,48 @@ async function updateCampaignStatus(statusUpdate) {
     // 1. Find the message in our database
     const message = await Message.findOne({ waMessageId: wamid });
     if (!message) {
-      // Not a message we are tracking (e.g., from a different app)
+      // Not a message we are tracking
       return;
     }
     
-    // 2. Update the message's own status
-    message.status = status;
-    await message.save();
-
-    // 3. --- THIS IS THE ANALYTICS ---
+    // 2. Update the message's own status (e.g., from 'sent' to 'delivered')
+    // We only update if the new status is 'better'
+    if (message.status === 'sent' && (status === 'delivered' || status === 'read')) {
+      message.status = status;
+    }
+    if (message.status === 'delivered' && status === 'read') {
+      message.status = status;
+    }
+    
+    // --- 3. THIS IS THE ANALYTICS ---
     // If the message is part of a campaign AND it was just marked as 'read'
     if (status === 'read' && message.campaign) {
       
-      // Increment the 'readCount' for that campaign
-      await Campaign.findByIdAndUpdate(message.campaign, { 
-        $inc: { readCount: 1 } 
-      });
+      // We only want to increment the count ONCE
+      // So we check if the status was *not* 'read' before
+      const alreadyRead = message.status === 'read';
       
-      console.log(`Campaign ${message.campaign} was READ.`);
+      if (!alreadyRead) {
+        // Increment the 'readCount' for that campaign
+        await Campaign.findByIdAndUpdate(message.campaign, { 
+          $inc: { readCount: 1 } 
+        });
+        console.log(`Campaign ${message.campaign} was READ.`);
+      }
     }
     
     // We can also update 'deliveredCount' here for more accuracy
     if (status === 'delivered' && message.campaign) {
-       await Campaign.findByIdAndUpdate(message.campaign, { 
-        $inc: { deliveredCount: 1 } 
-      });
+       // Only increment if it was just 'sent'
+       if (message.status !== 'delivered' && message.status !== 'read') {
+          await Campaign.findByIdAndUpdate(message.campaign, { 
+            $inc: { deliveredCount: 1 } 
+          });
+       }
     }
     // --- END OF ANALYTICS ---
+
+    await message.save(); // Save the updated status on the message
 
   } catch (error) {
     console.error("Error updating campaign status:", error);

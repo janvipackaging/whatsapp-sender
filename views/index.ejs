@@ -307,6 +307,10 @@
               <span class="report-item-value"><%= lastCampaign.deliveredCount %></span>
             </div>
             <div class="report-item">
+              <span class="report-item-label">Read:</span>
+              <span class="report-item-value"><%= lastCampaign.readCount %></span>
+            </div>
+            <div class="report-item">
               <span class="report-item-label">Failed:</span>
               <span class="report-item-value"><%= lastCampaign.failedCount %></span>
             </div>
@@ -321,8 +325,8 @@
         <h2>Quick-Add Contact</h2>
         <form action="/contacts/add" method="POST">
           <div>
-            <label for="name">Name (Optional):</label>
-            <input type="text" name="name" id="name" placeholder="e.g., Rohan Sharma">
+            <label for="name">Name:</label>
+            <input type="text" name="name" id="name" placeholder="e.g., Rohan Sharma" required>
           </div>
           <div>
             <label for="phone">Phone Number:</label>

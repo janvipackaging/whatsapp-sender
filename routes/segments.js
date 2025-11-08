@@ -18,4 +18,8 @@ router.post('/add', segmentsController.addSegment);
 // @desc    Handle deleting a segment
 router.get('/delete/:id', segmentsController.deleteSegment);
 
+// We can add routes for "edit" later
+// router.get('/edit/:id', segmentsController.getEditSegmentPage);
+// router.post('/edit/:id', segmentsController.updateSegment);
+
 module.exports = router;

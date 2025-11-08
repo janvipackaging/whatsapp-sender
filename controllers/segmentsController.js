@@ -1,15 +1,18 @@
 const Segment = require('../models/Segment');
 const Company = require('../models/Company');
-const Contact = require('../models/Contact');
+const Contact = require('../models/Contact'); // We need this to safely delete segments
 
 // @desc    Show the main segment management page
 exports.getSegmentsPage = async (req, res) => {
   try {
     // 1. Get all companies (for the "Create" form dropdown)
-    const companies = await Company.find();
+    // We only show companies that the logged-in user has access to
+    // For a Super-Admin, this is all companies. For a normal user, just their own.
+    const companyQuery = req.user.role === 'admin' ? {} : { _id: req.user.company };
+    const companies = await Company.find(companyQuery);
     
-    // 2. Get all existing segments and populate their company name
-    const segments = await Segment.find().populate('company', 'name');
+    // 2. Get all existing segments for the user's company/companies
+    const segments = await Segment.find(companyQuery).populate('company', 'name');
 
     // 3. Render the new EJS view
     res.render('segments', {
@@ -52,7 +55,8 @@ exports.addSegment = async (req, res) => {
     
   } catch (error) {
     console.error('Error adding new segment:', error);
-    res.status(500).send('Error adding segment');
+    req.flash('error_msg', 'Error adding segment.');
+    res.redirect('/segments');
   }
 };
 
@@ -72,12 +76,12 @@ exports.deleteSegment = async (req, res) => {
     // 2. Now it's safe to delete the segment itself
     await Segment.findByIdAndDelete(segmentId);
 
-    req.flash('success_msg', 'Segment and all associations were deleted.');
+    req.flash('success_msg', 'Segment and all associated contacts were updated.');
     res.redirect('/segments');
     
   } catch (error) {
     console.error('Error deleting segment:', error);
-    req.flash('error_msg', 'Error deleting segment. Note: Segments with associated contacts cannot be deleted.');
+    req.flash('error_msg', 'Error deleting segment.');
     res.redirect('/segments');
   }
 };

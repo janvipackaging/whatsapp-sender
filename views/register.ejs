@@ -59,7 +59,7 @@
   <div class="register-container">
     <h1>Create Account Request</h1>
 
-    <% if (typeof error !== 'undefined' && error) { %>
+    <% if (typeof error !== 'undefined' && error && error !== null) { %>
       <div class="alert alert-error">
         <%= error %>
       </div>

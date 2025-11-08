@@ -6,10 +6,12 @@ const Company = require('../models/Company');
 exports.getTemplatesPage = async (req, res) => {
   try {
     // 1. Get all companies (for the dropdown)
-    const companies = await Company.find();
+    // Only show companies the user has access to
+    const companyQuery = req.user.role === 'admin' ? {} : { _id: req.user.company };
+    const companies = await Company.find(companyQuery);
     
-    // 2. Get all existing templates
-    const templates = await Template.find().populate('company', 'name');
+    // 2. Get all existing templates for the user's company/companies
+    const templates = await Template.find(companyQuery).populate('company', 'name');
 
     // 3. Render the new EJS view
     res.render('templates', {

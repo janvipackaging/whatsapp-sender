@@ -1,11 +1,11 @@
 // --- Imports ---
 require('dotenv').config(); 
 const express = require('express');
-const session = require('express-session'); // We are already using this
+const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
-const MongoStore = require('connect-mongo'); // <-- 1. NEW IMPORT
+const MongoStore = require('connect-mongo');
 
 // --- Configs ---
 require('./config/passport')(passport); 
@@ -38,23 +38,19 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- 2. UPDATED SESSION & PASSPORT MIDDLEWARE ---
-// This code now saves your session to MongoDB
+// --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
-  saveUninitialized: false, // Don't save empty sessions
-  store: MongoStore.create({ // <-- Tell session to use MongoStore
-    mongoUrl: process.env.MONGO_URI, // Your Atlas connection string
-    collectionName: 'sessions', // Name of the collection to store sessions
-    ttl: 60 * 60 * 24 * 15 // <-- 15 DAYS
-    // (60s * 60m * 24h * 15d)
+  saveUninitialized: false, 
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI, 
+    collectionName: 'sessions'
   }),
   cookie: { 
-    maxAge: 1000 * 60 * 60 * 24 * 15 // <-- 15 DAYS
+    maxAge: 1000 * 60 * 60 * 24 * 15 // 15 DAYS
   }
 }));
-// --- END OF UPDATED SECTION ---
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -80,7 +76,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
       lastCampaign, companies, segments, pendingUsers,
-      user: req.user, // Pass user info to the view
+      user: req.user, 
       success_msg: req.flash('success_msg'),
       error_msg: req.flash('error_msg')
     });
@@ -99,6 +95,10 @@ app.use('/templates', isAuthenticated, require('./routes/templates'));
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
+
+// --- ADD THIS NEW ROUTE ---
+app.use('/segments', isAuthenticated, require('./routes/segments'));
+// --- END OF NEW ROUTE ---
 
 // --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 

@@ -22,9 +22,10 @@ exports.getPendingPage = (req, res) => {
 // --- UPDATED FOR MULTI-COMPANY ---
 exports.getRegisterPage = async (req, res) => {
   try {
-    // 1. Fetch all companies to show in the dropdown
+    // 1. Fetch ALL companies to show in the dropdown
     const companies = await Company.find().sort({ name: 1 });
     if (companies.length === 0) {
+      // This is a critical error, a user cannot register without a company
       return res.status(500).send(`Error: No companies have been created in the database. Please add a company via MongoDB Compass before registering a user.`);
     }
     
@@ -44,23 +45,24 @@ exports.getRegisterPage = async (req, res) => {
 // --- UPDATED FOR MULTI-COMPANY & VALIDATION ---
 exports.registerUser = async (req, res) => {
   const { username, password, password2, companyId } = req.body;
-  const companies = await Company.find().sort({ name: 1 }); // Re-fetch companies for error re-render
+  // Re-fetch companies in case of an error, to re-render the form
+  const companies = await Company.find().sort({ name: 1 }); 
 
   try {
     // --- Validation ---
     if (!username || !password || !password2 || !companyId) {
-      return res.render('register', { error: 'Please fill in all fields', companies });
+      return res.render('register', { error: 'Please fill in all fields', companies: companies });
     }
     if (password !== password2) {
-      return res.render('register', { error: 'Passwords do not match', companies });
+      return res.render('register', { error: 'Passwords do not match', companies: companies });
     }
     if (password.length < 6) {
-      return res.render('register', { error: 'Password must be at least 6 characters', companies });
+      return res.render('register', { error: 'Password must be at least 6 characters', companies: companies });
     }
     
     const existingUser = await User.findOne({ username: username });
     if (existingUser) {
-      return res.render('register', { error: 'That username is already taken', companies });
+      return res.render('register', { error: 'That username is already taken', companies: companies });
     }
 
     // Determine approval status: ONLY the first user is auto-approved
@@ -89,7 +91,7 @@ exports.registerUser = async (req, res) => {
 
   } catch (error) {
     console.error('Error during registration:', error);
-    res.render('register', { error: 'Something went wrong. Please try again.', companies });
+    res.render('register', { error: 'Something went wrong. Please try again.', companies: companies });
   }
 };
 
@@ -98,7 +100,6 @@ exports.registerUser = async (req, res) => {
 exports.approveUser = async (req, res) => {
     try {
         const userId = req.params.id;
-        // Only an admin can do this (add check later if needed)
         await User.findByIdAndUpdate(userId, { isApproved: true });
         
         req.flash('success_msg', 'User approved successfully!');
@@ -110,14 +111,10 @@ exports.approveUser = async (req, res) => {
     }
 };
 
-// ---
-// --- NEW FUNCTION 1: DECLINE USER ---
-// ---
 // @desc    Admin Decline Action
 exports.declineUser = async (req, res) => {
   try {
       const userId = req.params.id;
-      // Find and delete the user request
       await User.findByIdAndDelete(userId);
       
       req.flash('success_msg', 'User request declined and deleted.');
@@ -129,14 +126,10 @@ exports.declineUser = async (req, res) => {
   }
 };
 
-// ---
-// --- NEW FUNCTION 2: MANAGE USERS PAGE ---
-// ---
 // @desc    Show the Manage Users page
 exports.getManageUsersPage = async (req, res) => {
   try {
-    // Find all users *except* the currently logged-in admin
-    const users = await User.find({ _id: { $ne: req.user._id } })
+    const users = await User.find({ _id: { $ne: req.user._id } }) // Find all users *except* self
       .populate('company', 'name')
       .sort({ createdAt: -1 });
 
@@ -151,9 +144,6 @@ exports.getManageUsersPage = async (req, res) => {
   }
 };
 
-// ---
-// --- NEW FUNCTION 3: TOGGLE USER PERMISSION ---
-// ---
 // @desc    Revoke or Grant permission for an existing user
 exports.toggleUserApproval = async (req, res) => {
   try {
@@ -180,13 +170,10 @@ exports.toggleUserApproval = async (req, res) => {
 };
 
 
-// ---
-// --- NEW FUNCTION 4: ADMIN PASSWORD RESET ---
-// ---
 // @desc    Show the profile/password change page
 exports.getProfilePage = (req, res) => {
   res.render('profile', {
-    user: req.user, // Pass the logged-in user
+    user: req.user, 
     success_msg: req.flash('success_msg'),
     error_msg: req.flash('error_msg')
   });
@@ -197,32 +184,26 @@ exports.updatePassword = async (req, res) => {
   const { oldPassword, newPassword, newPassword2 } = req.body;
   const user = await User.findById(req.user.id);
 
-  // 1. Check if new passwords match
   if (newPassword !== newPassword2) {
     req.flash('error_msg', 'New passwords do not match.');
     return res.redirect('/users/profile');
   }
-
-  // 2. Check if new password is long enough
   if (newPassword.length < 6) {
     req.flash('error_msg', 'New password must be at least 6 characters.');
     return res.redirect('/users/profile');
   }
 
-  // 3. Check if old password is correct
   const isMatch = await user.matchPassword(oldPassword);
   if (!isMatch) {
     req.flash('error_msg', 'Old password incorrect.');
     return res.redirect('/users/profile');
   }
   
-  // 4. All checks passed. Save the new password.
-  // The 'save' hook in User.js will automatically hash it.
   user.password = newPassword;
   await user.save();
   
   req.flash('success_msg', 'Password updated successfully. Please log in again.');
-  req.logout((err) => { // Log them out for security
+  req.logout((err) => { 
     if (err) { return next(err); }
     res.redirect('/users/login');
   });

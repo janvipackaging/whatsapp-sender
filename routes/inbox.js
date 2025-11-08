@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../config/auth');
-
-// We will create this controller file in the next step
 const inboxController = require('../controllers/inboxController');
 
 // --- Define Routes ---

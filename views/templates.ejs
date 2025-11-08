@@ -114,7 +114,7 @@
         <tr>
           <td><%= template.name %></td>
           <td><%= template.templateName %></td>
-          <td><%= template.company.name %></td>
+          <td><%= template.company ? template.company.name : 'N/A' %></td>
           <td>
             <%= template.variables.map(v => v.name).join(', ') %>
           </td>
