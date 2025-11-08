@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-
-// We will create this controller file in the next step
 const inboxController = require('../controllers/inboxController');
 
 // --- Define Routes ---
@@ -9,5 +7,11 @@ const inboxController = require('../controllers/inboxController');
 // @route   GET /inbox/
 // @desc    Show the main inbox page with all replies
 router.get('/', inboxController.getInboxPage);
+
+// --- ADD THIS NEW ROUTE ---
+// @route   GET /inbox/read/:id
+// @desc    Mark a specific message as read
+router.get('/read/:id', inboxController.markAsRead);
+// --- END OF NEW ROUTE ---
 
 module.exports = router;

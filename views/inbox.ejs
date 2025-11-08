@@ -11,6 +11,11 @@
     a { color: #007bff; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
+    /* Alert Box Styling */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
+    .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+
     /* Message List Styling */
     .message-list { list-style-type: none; padding: 0; }
     .message-item {
@@ -19,6 +24,8 @@
       padding: 15px 20px;
       margin-bottom: 15px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      /* Add style for unread items */
+      <%= message.isRead ? '' : 'border-left: 5px solid #007bff;' %>
     }
     .message-header {
       border-bottom: 1px solid #eee;
@@ -33,6 +40,7 @@
     .message-time { font-size: 0.9em; color: #777; }
     .message-body { font-size: 1em; color: #222; line-height: 1.5; }
     .message-company { font-size: 0.85em; color: #007bff; font-weight: 500; }
+    .btn-read { background-color: #28a745; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; }
 
   </style>
 </head>
@@ -41,20 +49,34 @@
   <h1>Inbox - Customer Replies</h1>
   <p><a href="/">&larr; Back to Dashboard</a></p>
 
+  <% if (success_msg && success_msg.length > 0) { %>
+    <div class="alert alert-success"><%= success_msg %></div>
+  <% } %>
+  <% if (error_msg && error_msg.length > 0) { %>
+    <div class="alert alert-error"><%= error_msg %></div>
+  <% } %>
+
   <ul class="message-list">
     
     <% messages.forEach(function(message) { %>
-      <li class="message-item">
+      <li class="message-item" style="<%= message.isRead ? '' : 'border-left: 5px solid #007bff;' %>">
         <div class="message-header">
           <div class="message-contact">
             <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown Contact' %>
-            
             <span class="message-company">
               (<%= message.company ? message.company.name : 'Unknown Company' %>)
+              <% if (!message.isRead) { %>
+                <span style="color: #dc3545; font-weight: 600;"> (NEW)</span>
+              <% } %>
             </span>
           </div>
-          <div class="message-time">
-            <%= new Date(message.createdAt).toLocaleString() %>
+          <div style="display: flex; align-items: center;">
+            <% if (!message.isRead) { %>
+              <a href="/inbox/read/<%= message._id %>" class="btn-read" style="margin-right: 15px;">Mark as Read</a>
+            <% } %>
+            <div class="message-time">
+              <%= new Date(message.createdAt).toLocaleString() %>
+            </div>
           </div>
         </div>
         <div class="message-body">
@@ -66,7 +88,7 @@
     <% if (messages.length === 0) { %>
       <li class="message-item">
         <div class="message-body">
-          You have no new messages.
+          You have no messages yet.
         </div>
       </li>
     <% } %>

@@ -6,34 +6,42 @@
   <title>Dashboard</title>
   
   <style>
+    /* Global Styles */
     body { 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
       margin: 0; 
-      background-color: #f4f7f6; 
+      background-color: #f0f2f5; /* Light gray background */
+      color: #333;
     }
     .container {
       padding: 30px;
+      max-width: 1300px;
+      margin: 0 auto;
     }
-    
+    h1 { color: #1e3a8a; margin-top: 0; }
+    h2 { color: #333; font-size: 1.5em; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+
     /* Navigation */
     nav { 
-      background-color: #fff;
-      padding: 20px 30px;
-      border-bottom: 1px solid #ddd;
+      background-color: #1e3a8a; /* Deep blue navigation */
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     nav a { 
-      padding: 10px 15px; 
+      padding: 8px 15px; 
       text-decoration: none; 
-      background-color: #007bff; 
+      background-color: #4f46e5; /* Slightly lighter button blue */
       color: white; 
-      border-radius: 5px; 
-      margin-right: 10px;
-      margin-bottom: 10px;
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
       display: inline-block;
+      transition: background-color 0.2s;
     }
-    nav a:hover { background-color: #0056b3; }
-    
-    h1, h2 { color: #333; }
+    nav a:hover { background-color: #3730a3; }
+    .btn-logout { background-color: #dc2626 !important; float: right; }
+    .btn-logout:hover { background-color: #b91c1c !important; }
     
     /* Alert Box Styling */
     .alert {
@@ -41,7 +49,7 @@
       margin-bottom: 20px;
       border-radius: 5px;
       font-weight: 500;
-      max-width: 95%; /* Adjust width */
+      max-width: 95%; 
     }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
@@ -59,25 +67,28 @@
       background: #fff;
       padding: 25px;
       border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       text-align: center;
+      transition: transform 0.2s;
     }
+    .stat-box:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
     .stat-box-number {
-      font-size: 2.5em;
-      font-weight: 600;
-      color: #007bff;
+      font-size: 3em;
+      font-weight: 700;
+      color: #4f46e5; /* Main brand color */
       margin: 0;
     }
     .stat-box-label {
-      font-size: 1.1em;
+      font-size: 1em;
       color: #555;
       margin: 5px 0 0 0;
+      text-transform: uppercase;
     }
     
     /* Main Content Grid (2 columns) */
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr; 
+      grid-template-columns: 2fr 1fr; /* Inbox/Reports wider than Quick-Add form */
       grid-gap: 25px;
     }
     
@@ -86,33 +97,54 @@
       background: #fff;
       border-radius: 8px;
       padding: 25px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
-    /* Pending Users Widget */
+    /* Widget Specifics */
     .pending-user-item { 
       border-bottom: 1px solid #eee; 
-      padding: 10px 0; 
+      padding: 12px 0; 
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     .pending-user-item:last-child { border: 0; }
     .btn-approve {
-      padding: 5px 10px;
-      background-color: #28a745;
+      padding: 6px 12px;
+      background-color: #22c55e;
       color: white;
-      border-radius: 5px;
+      border-radius: 4px;
       text-decoration: none;
       font-size: 0.9em;
+      transition: background-color 0.2s;
     }
-    .btn-approve:hover { background-color: #218838; }
+    .btn-approve:hover { background-color: #16a34a; }
 
-    /* Quick Add Form Styles (Already exists) */
+    .inbox-list { list-style-type: none; padding: 0; }
+    .inbox-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .inbox-item:last-child { border: 0; }
+    .inbox-item-contact { font-weight: 600; color: #1e3a8a; }
+    .inbox-item-body { color: #555; margin: 5px 0; font-style: italic; }
+    
+    .report-item { display: flex; justify-content: space-between; font-size: 1em; padding: 8px 0; border-bottom: 1px dotted #eee; }
+    .report-item:last-child { border: none; }
+    .report-item-label { font-weight: 600; }
+    .report-item-value { color: #333; }
 
-    @media (max-width: 900px) {
-      .dashboard-grid { grid-template-columns: 1fr; }
+    /* Quick Add Form Styles */
+    .widget form div { margin-bottom: 15px; }
+
+    /* Responsive */
+    @media (max-width: 1000px) {
+      .dashboard-grid { grid-template-columns: 1fr 1fr; }
       .content-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+      nav a { margin-right: 5px; }
+      .widget { padding: 15px; }
     }
   </style>
 </head>
@@ -124,7 +156,7 @@
     <a href="/templates">Manage Templates</a>
     <a href="/reports">Campaign Reports</a>
     <a href="/inbox">View Inbox</a>
-    <a href="/users/logout" style="background-color: #dc3545; float: right;">Log Out</a>
+    <a href="/users/logout" class="btn-logout">Log Out</a>
   </nav>
 
   <div class="container">
@@ -161,10 +193,10 @@
 
       <div>
         
-        <div class="widget" style="background-color: #fff3cd; border: 1px solid #ffecb5; margin-bottom: 25px;">
-          <h2>🚨 Pending Approvals</h2>
+        <div class="widget" style="background-color: #fffbeb; border: 1px solid #fde68a; margin-bottom: 25px;">
+          <h2>🚨 User Approval Needed</h2>
           <ul class="inbox-list">
-            <% if (pendingUsers.length > 0) { %>
+            <% if (pendingUsers && pendingUsers.length > 0) { %>
               <% pendingUsers.forEach(function(user) { %>
                 <li class="pending-user-item">
                   <span><%= user.username %> (<%= user.company ? user.company.name : 'N/A' %>)</span>
@@ -172,12 +204,12 @@
                 </li>
               <% }); %>
             <% } else { %>
-              <li style="color: #664d03;">No users waiting for approval.</li>
+              <li style="color: #a16207; font-style: italic;">No users awaiting approval.</li>
             <% } %>
           </ul>
         </div>
-        <div class="widget">
-          <h2>Recent Unread Messages</h2>
+        <div class="widget" style="margin-bottom: 25px;">
+          <h2>Recent Replies</h2>
           <ul class="inbox-list">
             <% if (recentMessages.length > 0) { %>
               <% recentMessages.forEach(function(message) { %>
@@ -186,19 +218,19 @@
                     <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown' %>
                   </div>
                   <div class="inbox-item-body">
-                    <%= message.body.substring(0, 50) %>...
+                    "<%= message.body.substring(0, 45) %>..."
                   </div>
                 </li>
               <% }); %>
             <% } else { %>
-              <li class="inbox-item-body">No unread messages.</li>
+              <li class="inbox-item-body">No recent replies.</li>
             <% } %>
           </ul>
           <a href="/inbox">Go to full Inbox &rarr;</a>
         </div>
         
-        <div class="widget" style="margin-top: 25px;">
-          <h2>Last Campaign Sent</h2>
+        <div class="widget">
+          <h2>Last Campaign Sent Summary</h2>
           <% if (lastCampaign) { %>
             <div class="report-item">
               <span class="report-item-label">Name:</span>
@@ -217,9 +249,9 @@
               <span class="report-item-value"><%= lastCampaign.failedCount %></span>
             </div>
           <% } else { %>
-            <p>You haven't sent any campaigns yet.</p>
+            <p>No campaigns have been sent yet.</p>
           <% } %>
-          <a href="/reports">View all reports &rarr;</a>
+          <a href="/reports">View full reports &rarr;</a>
         </div>
       </div>
 
@@ -232,7 +264,7 @@
           </div>
           <div>
             <label for="phone">Phone Number:</label>
-            <input type="tel" name="phone" id="phone" placeholder="e.g., +919607732123 or 919607732123" required>
+            <input type="tel" name="phone" id="phone" placeholder="e.g., +1234567890 or 919607732123" required>
           </div>
           <div>
             <label for="companyId-single">Select Company:</label>
