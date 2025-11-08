@@ -6,7 +6,11 @@ const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
 
-// --- Models ---
+// --- Configs ---
+require('./config/passport')(passport); 
+const { isAuthenticated } = require('./config/auth'); 
+
+// --- MODELS & CONTROLLERS (Load EVERYTHING needed for routes to work) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
@@ -14,15 +18,13 @@ const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
 
-// --- Configs ---
-require('./config/passport')(passport); 
-const { isAuthenticated } = require('./config/auth'); 
-
-// --- Controller Functions (Copied for Guaranteed Startup) ---
-// We need these controllers here because the routes file is crashing.
-const campaignsController = require('./controllers/campaignsController');
-const { sendTestMessage, startCampaign, getCampaignPage } = campaignsController;
-// --- END Controller Functions ---
+// Load Controllers needed for routes BEFORE routes are defined
+const campaignsController = require('./controllers/campaignsController'); 
+// Load other controllers for dashboard and stability
+const reportsController = require('./controllers/reportsController'); 
+const inboxController = require('./controllers/inboxController'); 
+const blocklistController = require('./controllers/blocklistController'); 
+// --- END CONTROLLER IMPORTS ---
 
 
 // --- Initialization ---
@@ -39,7 +41,7 @@ app.use(express.json());
 
 // --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key',
+  secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key', 
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 60000 }
@@ -47,7 +49,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
-// --- END OF NEW MIDDLEWARE ---
+// --- END OF MIDDLEWARE ---
 
 // --- Routes ---
 
@@ -59,9 +61,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     const totalCampaigns = await Campaign.countDocuments();
     const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
     const recentMessages = await Message.find({ isRead: false, direction: 'inbound' })
-      .sort({ createdAt: -1 })
-      .limit(3)
-      .populate('contact', 'name phone');
+      .sort({ createdAt: -1 }).limit(3).populate('contact', 'name phone');
     const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 });
     const companies = await Company.find();
     const segments = await Segment.find();
@@ -81,14 +81,15 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- CAMPAIGN ROUTES (MOVED HERE TO PREVENT CRASH) ---
-app.get('/campaigns', isAuthenticated, getCampaignPage); // Show the campaign page
-app.post('/campaigns/start', isAuthenticated, startCampaign); // Start the bulk send
-app.post('/campaigns/test', isAuthenticated, sendTestMessage); // Send the test message
+// --- CRITICAL FIX: CAMPAIGN ROUTES DEFINED DIRECTLY IN INDEX.JS ---
+// This guarantees the handler functions are present when the route is created.
+app.get('/campaigns', isAuthenticated, campaignsController.getCampaignPage);
+app.post('/campaigns/start', isAuthenticated, campaignsController.startCampaign);
+app.post('/campaigns/test', isAuthenticated, campaignsController.sendTestMessage);
 // --- END CAMPAIGN FIX ---
 
 
-// --- Other Protected App Routes ---
+// --- Other Protected App Routes (using dedicated route files) ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
