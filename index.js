@@ -6,28 +6,23 @@ const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
 
-// --- Configs & Middleware ---
+// --- Configs ---
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS & CONTROLLERS (For stable startup) ---
+// --- MODELS & CONTROLLERS ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-const campaignsController = require('./controllers/campaignsController'); 
-const reportsController = require('./controllers/reportsController'); 
-const inboxController = require('./controllers/inboxController'); 
-const blocklistController = require('./controllers/blocklistController'); 
-// --- END CONTROLLER IMPORTS ---
+// --- END MODEL IMPORTS ---
 
 
 // --- Initialization ---
 const app = express();
-// FINAL PORT FIX: Use standard process.env.PORT
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
 // --- Connect to Database ---
 connectDB(); 
@@ -39,7 +34,6 @@ app.use(express.json());
 
 // --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
-  // FINAL SESSION SECRET FIX: Use standard process.env syntax
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
   saveUninitialized: false,
@@ -53,6 +47,7 @@ app.use(flash());
 // --- Routes ---
 
 // @route   GET /
+// @desc    Show the main "True Dashboard" (NOW PROTECTED)
 app.get('/', isAuthenticated, async (req, res) => {
   try {
     const totalContacts = await Contact.countDocuments();
@@ -79,15 +74,12 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- CAMPAIGN ROUTES DEFINED DIRECTLY ---
-app.get('/campaigns', isAuthenticated, campaignsController.getCampaignPage);
-app.post('/campaigns/start', isAuthenticated, campaignsController.startCampaign);
-app.post('/campaigns/test', isAuthenticated, campaignsController.sendTestMessage);
-// --- END CAMPAIGN FIX ---
-
-
-// --- Other Protected App Routes ---
+// --- Protected App Routes (Restored to External Files) ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
+
+// --- FIX: RESTORED CAMPAIGN ROUTE TO EXTERNAL FILE ---
+app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
+
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 

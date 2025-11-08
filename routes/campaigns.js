@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const campaignsController = require('../controllers/campaignsController');
+const { isAuthenticated } = require('../config/auth');
 
 // --- Define Routes ---
 
@@ -17,5 +18,3 @@ router.post('/start', campaignsController.startCampaign);
 router.post('/test', campaignsController.sendTestMessage);
 
 module.exports = router;
-
-// Forced update to ensure Vercel sees a change //
