@@ -5,21 +5,25 @@ const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
+const MongoStore = require('connect-mongo');
 
-// --- Configs & Middleware ---
+// --- Configs ---
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS & CONTROLLERS (Needed for stability and dashboard data) ---
+// --- MODELS (Required for Dashboard data) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-// --- We load controllers here to ensure they are available for the routes file that is crashing ---
+
+// --- CONTROLLERS (Required for routes) ---
 const campaignsController = require('./controllers/campaignsController'); 
-// --- END CONTROLLER IMPORTS ---
+const reportsController = require('./controllers/reportsController'); 
+const inboxController = require('./controllers/inboxController'); 
+const blocklistController = require('./controllers/blocklistController'); 
 
 
 // --- Initialization ---
@@ -34,22 +38,29 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- SESSION & PASSPORT MIDDLEWARE ---
+// --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 60000 }
+  saveUninitialized: false, 
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI, 
+    collectionName: 'sessions'
+  }),
+  cookie: { 
+    maxAge: 1000 * 60 * 60 * 24 * 15 // 15 DAYS
+  }
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
-// --- END OF MIDDLEWARE ---
+
 
 // --- Routes ---
 
 // @route   GET /
-// @desc    Show the main "True Dashboard" (NOW PROTECTED)
+// @desc    Show the main "True Dashboard" (PROTECTED)
 app.get('/', isAuthenticated, async (req, res) => {
   try {
     const totalContacts = await Contact.countDocuments();
@@ -65,6 +76,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
       lastCampaign, companies, segments, pendingUsers,
+      user: req.user, 
       success_msg: req.flash('success_msg'),
       error_msg: req.flash('error_msg')
     });
@@ -76,17 +88,17 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes (Restored to External Files) ---
-// This correct structure is designed to fix the TypeError.
+// --- Protected App Routes ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
-
-// --- CORRECT WAY TO LOAD EXTERNAL CAMPAIGN ROUTE (CRASH POINT) ---
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
-
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
+
+// --- ADD THIS NEW ROUTE ---
+app.use('/segments', isAuthenticated, require('./routes/segments'));
+// --- END OF NEW ROUTE ---
 
 // --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 

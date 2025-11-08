@@ -21,7 +21,13 @@
     .status { padding: 5px 8px; border-radius: 5px; font-weight: 600; font-size: 0.85em; }
     .status-sending { background-color: #fff3cd; color: #664d03; }
     .status-completed { background-color: #d1e7dd; color: #0f5132; }
-    .rate { font-weight: 700; color: #1e7e34; }
+    
+    /* NEW Read Rate Style */
+    .rate { 
+      font-weight: 700; 
+      color: #0f5132; 
+      font-size: 1.1em;
+    }
   </style>
 </head>
 <body>
@@ -39,17 +45,21 @@
         <th>Status</th>
         <th>Total Sent</th>
         <th>Delivered</th>
-        <th>Read</th>
-        <th>Read Rate %</th> </tr>
+        <th>Failed</th>
+        <th>Read</th> <th>Read Rate %</th> </tr>
     </thead>
     <tbody>
-      <% campaigns.forEach(function(campaign) { 
-        // Calculate Read Rate %
-        let readRate = 0;
-        if (campaign.deliveredCount > 0) {
-          readRate = ((campaign.readCount / campaign.deliveredCount) * 100).toFixed(1);
-        }
-      %>
+      <% campaigns.forEach(function(campaign) { %>
+        
+        <% 
+          // --- NEW: Calculate Read Rate % ---
+          let readRate = 0;
+          if (campaign.deliveredCount > 0) {
+            // (readCount / deliveredCount) * 100, rounded to 1 decimal
+            readRate = ((campaign.readCount / campaign.deliveredCount) * 100).toFixed(1);
+          }
+        %>
+        
         <tr>
           <td><%= campaign.name %></td>
           <td><%= campaign.company ? campaign.company.name : 'N/A' %></td>
@@ -62,9 +72,14 @@
           </td>
           <td><%= campaign.totalSent %></td>
           <td><%= campaign.deliveredCount %></td>
-          <td><%= campaign.readCount %></td> <td>
+          <td><%= campaign.failedCount %></td>
+          
+          <td><%= campaign.readCount %></td>
+          
+          <td>
             <span class="rate"><%= readRate %>%</span>
-          </td> </tr>
+          </td> 
+        </tr>
       <% }); %>
     </tbody>
   </table>

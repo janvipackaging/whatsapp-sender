@@ -10,12 +10,13 @@
     h1 { text-align: center; color: #333; }
     form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-    input[type="text"], input[type="password"] {
+    input[type="text"], input[type="password"], select {
       width: 100%;
       padding: 12px;
       border: 1px solid #ddd;
       border-radius: 5px;
       box-sizing: border-box; 
+      font-size: 1em; /* Added for consistency */
     }
     button { 
       padding: 12px 20px; 
@@ -69,12 +70,17 @@
     </div>
 
     <form action="/users/register" method="POST">
+      
       <div>
-        <label>Account will be linked to:</label>
-        <div class="alert alert-success" style="padding: 10px; margin-bottom: 0;">
-          **<%= company.name %>**
-        </div>
-        <input type="hidden" name="companyId" value="<%= company._id %>">
+        <label for="companyId">Select Company:</label>
+        <select name="companyId" id="companyId" required>
+          <option value="">-- Please Select --</option>
+          <% if (companies && companies.length > 0) { %>
+            <% companies.forEach(function(company) { %>
+              <option value="<%= company._id %>"><%= company.name %></option>
+            <% }); %>
+          <% } %>
+        </select>
       </div>
       <div>
         <label for="username">Username:</label>

@@ -10,7 +10,7 @@
     body { 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
       margin: 0; 
-      background-color: #f0f2f5; /* Light gray background */
+      background-color: #f0f2f5; 
       color: #333;
     }
     .container {
@@ -23,25 +23,32 @@
 
     /* Navigation */
     nav { 
-      background-color: #1e3a8a; /* Deep blue navigation */
+      background-color: #1e3a8a; 
       padding: 15px 30px;
       margin-bottom: 30px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
     }
     nav a { 
       padding: 8px 15px; 
       text-decoration: none; 
-      background-color: #4f46e5; /* Slightly lighter button blue */
+      background-color: #4f46e5; 
       color: white; 
       border-radius: 4px; 
       margin-right: 12px;
       margin-bottom: 8px;
+      margin-top: 8px;
       display: inline-block;
       transition: background-color 0.2s;
       font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
-    .btn-logout { background-color: #dc2626 !important; float: right; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-profile:hover { background-color: #475569 !important; }
+    .btn-logout { background-color: #dc2626 !important; }
     .btn-logout:hover { background-color: #b91c1c !important; }
     
     /* Alert Box Styling */
@@ -79,7 +86,7 @@
     .stat-box-number {
       font-size: 3em;
       font-weight: 700;
-      color: #4f46e5; /* Main brand color */
+      color: #4f46e5; 
       margin: 0;
     }
     .stat-box-label {
@@ -93,7 +100,7 @@
     /* Main Content Grid (2 columns) */
     .content-grid {
       display: grid;
-      grid-template-columns: 2fr 1fr; /* Inbox/Reports wider */
+      grid-template-columns: 2fr 1fr; 
       grid-gap: 25px;
     }
     
@@ -114,17 +121,20 @@
       align-items: center;
     }
     .pending-user-item:last-child { border: 0; }
-    .btn-approve {
+    .btn-approve, .btn-decline {
       padding: 6px 12px;
-      background-color: #22c55e;
       color: white;
       border-radius: 4px;
       text-decoration: none;
       font-size: 0.9em;
       transition: background-color 0.2s;
       font-weight: 600;
+      margin-left: 8px;
     }
+    .btn-approve { background-color: #22c55e; }
     .btn-approve:hover { background-color: #16a34a; }
+    .btn-decline { background-color: #dc2626; } 
+    .btn-decline:hover { background-color: #b91c1c; }
 
     /* Inbox/Report Widget Styles */
     .inbox-list { list-style-type: none; padding: 0; }
@@ -177,11 +187,15 @@
       .dashboard-grid { grid-template-columns: 1fr 1fr; }
       .content-grid { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-right { margin-left: 0; }
+       .btn-logout { float: none; }
+    }
     @media (max-width: 600px) {
       .dashboard-grid { grid-template-columns: 1fr; }
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      nav a { margin-right: 5px; }
       .widget { padding: 15px; }
     }
   </style>
@@ -189,15 +203,20 @@
 <body>
 
   <nav>
-    <a href="/contacts">Manage Contacts</a>
-    <a href="/campaigns">New Campaign</a>
-    <a href="/templates">Manage Templates</a>
-    <a href="/reports">Campaign Reports</a>
-    <a href="/inbox">View Inbox</a>
-    <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
-    <a href="/users/logout" class="btn-logout">Log Out</a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a> <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+    </div>
+    <div class="nav-right">
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
+    </div>
   </nav>
-
   <div class="container">
 
     <% if (success_msg && success_msg.length > 0) { %>
@@ -239,7 +258,10 @@
               <% pendingUsers.forEach(function(user) { %>
                 <li class="pending-user-item">
                   <span><%= user.username %> (<%= user.company ? user.company.name : 'N/A' %>)</span>
-                  <a href="/users/approve/<%= user._id %>" class="btn-approve">Approve</a>
+                  <div>
+                    <a href="/users/approve/<%= user._id %>" class="btn-approve">Approve</a>
+                    <a href="/users/decline/<%= user._id %>" class="btn-decline">Decline</a>
+                  </div>
                 </li>
               <% }); %>
             <% } else { %>

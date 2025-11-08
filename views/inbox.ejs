@@ -24,7 +24,6 @@
       padding: 15px 20px;
       margin-bottom: 15px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-      /* The bad line of code was here. It is now removed. */
     }
     .message-header {
       border-bottom: 1px solid #eee;
@@ -39,22 +38,51 @@
     .message-time { font-size: 0.9em; color: #777; }
     .message-body { font-size: 1em; color: #222; line-height: 1.5; }
     .message-company { font-size: 0.85em; color: #007bff; font-weight: 500; }
-    .btn-read { background-color: #28a745; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; }
+    
+    /* Button Styles */
+    .btn {
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: white;
+      font-size: 0.9em;
+      font-weight: 500;
+      margin-right: 15px;
+    }
+    .btn-read { background-color: #28a745; }
+    .btn-read:hover { background-color: #218838; }
+    .btn-read-all {
+      background-color: #17a2b8;
+      color: white;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      font-weight: 600;
+      display: inline-block;
+      margin-left: 20px;
+    }
+    .btn-read-all:hover { background-color: #138496; }
 
   </style>
 </head>
 <body>
 
   <h1>Inbox - Customer Replies</h1>
-  <p><a href="/">&larr; Back to Dashboard</a></p>
+  <p>
+    <a href="/">&larr; Back to Dashboard</a>
+    <a href="/inbox/readall" class="btn-read-all">Mark All as Read</a>
+  </p>
 
   <% if (success_msg && success_msg.length > 0) { %>
-    <div class="alert alert-success"><%= success_msg %></div>
+    <div class="alert alert-success">
+      <%= success_msg %>
+    </div>
   <% } %>
   <% if (error_msg && error_msg.length > 0) { %>
-    <div class="alert alert-error"><%= error_msg %></div>
+    <div class="alert alert-error">
+      <%= error_msg %>
+    </div>
   <% } %>
-
   <ul class="message-list">
     
     <% messages.forEach(function(message) { %>
@@ -71,7 +99,7 @@
           </div>
           <div style="display: flex; align-items: center;">
             <% if (!message.isRead) { %>
-              <a href="/inbox/read/<%= message._id %>" class="btn-read" style="margin-right: 15px;">Mark as Read</a>
+              <a href="/inbox/read/<%= message._id %>" class="btn btn-read">Mark as Read</a>
             <% } %>
             <div class="message-time">
               <%= new Date(message.createdAt).toLocaleString() %>

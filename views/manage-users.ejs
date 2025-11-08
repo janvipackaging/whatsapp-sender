@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users</title>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
+    h1 { color: #333; }
+    a { color: #007bff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Alert Box Styling */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; }
+    .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+
+    /* Table Styling */
+    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 8px; margin-top: 20px; max-width: 800px; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f4f7f6; }
+    .btn-toggle { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 600; color: white; }
+    .btn-disable { background-color: #dc3545; }
+    .btn-disable:hover { background-color: #c82333; }
+    .btn-enable { background-color: #28a745; }
+    .btn-enable:hover { background-color: #218838; }
+  </style>
+</head>
+<body>
+
+  <h1>Manage Users</h1>
+  <p><a href="/">&larr; Back to Dashboard</a></p>
+
+  <% if (success_msg && success_msg.length > 0) { %>
+    <div class="alert alert-success"><%= success_msg %></div>
+  <% } %>
+  <% if (error_msg && error_msg.length > 0) { %>
+    <div class="alert alert-error"><%= error_msg %></div>
+  <% } %>
+
+  <h2>Approved Users</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(function(user) { %>
+        <tr>
+          <td><%= user.username %></td>
+          <td><%= user.company ? user.company.name : 'N/A' %></td>
+          <td><%= user.role %></td>
+          <td>
+            <% if (user.isApproved) { %>
+              <span style="color: green; font-weight: 600;">Enabled</span>
+            <% } else { %>
+              <span style="color: red; font-weight: 600;">Disabled</span>
+            <% } %>
+          </td>
+          <td>
+            <% if (user.isApproved) { %>
+              <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-disable">Disable (Revoke)</a>
+            <% } else { %>
+              <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-enable">Enable</a>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+
+</body>
+</html>

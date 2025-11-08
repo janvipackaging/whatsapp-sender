@@ -11,6 +11,13 @@ const MessageSchema = new mongoose.Schema({
     ref: 'Contact',
     required: true
   },
+  // --- NEW FIELD ---
+  // This links an outbound message to the campaign it came from.
+  campaign: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Campaign',
+    required: false // Not required, since inbound replies don't have it
+  },
   
   // --- Message Details ---
   waMessageId: {
@@ -19,19 +26,24 @@ const MessageSchema = new mongoose.Schema({
     unique: true
   },
   body: {
-    type: String, // The text of the customer's reply
-    required: true
+    type: String, // The text of the customer's reply or our outbound message
+    required: false // Not required for status-only messages
   },
   direction: {
     type: String,
-    enum: ['inbound', 'outbound'], // We'll only store 'inbound' for now
-    default: 'inbound'
+    enum: ['inbound', 'outbound'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['sent', 'delivered', 'read', 'failed'],
+    default: 'sent'
   },
   isRead: {
     type: Boolean,
-    default: false // For your "Inbox" page, to mark messages as read
+    default: false // For your "Inbox" page
   }
   
-}, { timestamps: true }); // 'createdAt' will be when the message was received
+}, { timestamps: true }); 
 
 module.exports = mongoose.model('Message', MessageSchema);

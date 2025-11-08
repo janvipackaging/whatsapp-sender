@@ -14,7 +14,9 @@ exports.getTemplatesPage = async (req, res) => {
     // 3. Render the new EJS view
     res.render('templates', {
       companies: companies,
-      templates: templates
+      templates: templates,
+      success_msg: req.flash('success_msg'), // Pass flash messages
+      error_msg: req.flash('error_msg')     // Pass flash messages
     });
     
   } catch (error) {
@@ -31,7 +33,6 @@ exports.addTemplate = async (req, res) => {
     const { name, templateName, companyId, variableName } = req.body;
 
     // 2. Prepare the variables array
-    // (This is simple for now, it just assumes one 'body' variable)
     let variables = [];
     if (variableName) {
       variables.push({ name: variableName, type: 'body' });
@@ -49,14 +50,37 @@ exports.addTemplate = async (req, res) => {
     await newTemplate.save();
 
     // 5. Redirect back to the templates page
+    req.flash('success_msg', 'Template saved successfully.');
     res.redirect('/templates');
     
   } catch (error) {
     console.error('Error adding new template:', error);
-    // Add a check for a duplicate template name
     if (error.code === 11000) {
-      return res.status(400).send('Error: A template with that WhatsApp Name already exists.');
+      req.flash('error_msg', 'Error: A template with that WhatsApp Name already exists.');
+      return res.redirect('/templates');
     }
-    res.status(500).send('Error adding template');
+    req.flash('error_msg', 'Error adding template.');
+    res.redirect('/templates');
+  }
+};
+
+// ---
+// --- THIS IS THE NEW FUNCTION ---
+// ---
+// @desc    Handle deleting a template
+exports.deleteTemplate = async (req, res) => {
+  try {
+    const templateId = req.params.id;
+
+    // Find the template by its ID and delete it
+    await Template.findByIdAndDelete(templateId);
+
+    req.flash('success_msg', 'Template deleted successfully.');
+    res.redirect('/templates');
+    
+  } catch (error) {
+    console.error('Error deleting template:', error);
+    req.flash('error_msg', 'Error deleting template.');
+    res.redirect('/templates');
   }
 };
