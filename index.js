@@ -6,21 +6,18 @@ const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
 
-// --- Configs ---
+// --- Configs & Middleware ---
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS & CONTROLLERS (Load EVERYTHING needed for routes to work) ---
+// --- MODELS & CONTROLLERS (For stable startup) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-
-// Load Controllers needed for routes BEFORE routes are defined
 const campaignsController = require('./controllers/campaignsController'); 
-// Load other controllers for dashboard and stability
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
 const blocklistController = require('./controllers/blocklistController'); 
@@ -29,7 +26,8 @@ const blocklistController = require('./controllers/blocklistController');
 
 // --- Initialization ---
 const app = express();
-const PORT = process.env.PORT || 3000;
+// FINAL PORT FIX: Use standard process.env.PORT
+const PORT = process.env.PORT || 3000; 
 
 // --- Connect to Database ---
 connectDB(); 
@@ -41,7 +39,8 @@ app.use(express.json());
 
 // --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key', 
+  // FINAL SESSION SECRET FIX: Use standard process.env syntax
+  secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 60000 }
@@ -54,7 +53,6 @@ app.use(flash());
 // --- Routes ---
 
 // @route   GET /
-// @desc    Show the main "True Dashboard" (NOW PROTECTED)
 app.get('/', isAuthenticated, async (req, res) => {
   try {
     const totalContacts = await Contact.countDocuments();
@@ -81,15 +79,14 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- CRITICAL FIX: CAMPAIGN ROUTES DEFINED DIRECTLY IN INDEX.JS ---
-// This guarantees the handler functions are present when the route is created.
+// --- CAMPAIGN ROUTES DEFINED DIRECTLY ---
 app.get('/campaigns', isAuthenticated, campaignsController.getCampaignPage);
 app.post('/campaigns/start', isAuthenticated, campaignsController.startCampaign);
 app.post('/campaigns/test', isAuthenticated, campaignsController.sendTestMessage);
 // --- END CAMPAIGN FIX ---
 
 
-// --- Other Protected App Routes (using dedicated route files) ---
+// --- Other Protected App Routes ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
