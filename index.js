@@ -6,24 +6,18 @@ const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
 
-// --- Configs ---
+// --- Configs & Middleware ---
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS & CONTROLLERS (For stable startup) ---
-// Note: We MUST still load controllers even if we don't use them directly here,
-// because other files (like the routes) depend on them.
+// --- MODELS (Required for stability) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-const campaignsController = require('./controllers/campaignsController'); 
-const reportsController = require('./controllers/reportsController'); 
-const inboxController = require('./controllers/inboxController'); 
-const blocklistController = require('./controllers/blocklistController'); 
-// --- END CONTROLLER IMPORTS ---
+// --- END MODEL IMPORTS ---
 
 
 // --- Initialization ---
@@ -80,10 +74,12 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes (Restored to External Files) ---
+// --- Protected App Routes (Using External Files) ---
+// This is the correct, final structure.
+
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 
-// --- CORRECT WAY TO LOAD EXTERNAL CAMPAIGN ROUTE ---
+// --- FIX: RESTORED CAMPAIGN ROUTE TO EXTERNAL FILE ---
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
