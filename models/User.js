@@ -11,7 +11,20 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  // We can add a 'company' field later for user roles
+  company: { // <-- New: The company this user belongs to
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
+  },
+  isApproved: { // <-- New: The approval gate
+    type: Boolean,
+    default: false
+  },
+  role: { // Added for future scalability
+    type: String,
+    enum: ['admin', 'manager', 'user'],
+    default: 'user'
+  }
 });
 
 // This function automatically encrypts the password *before* saving a new user
