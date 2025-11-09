@@ -69,12 +69,22 @@
     .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; }
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 900px; margin-left: auto; margin-right: auto; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
     /* Table Styling */
-    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 8px; margin-top: 20px; max-width: 800px; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      background: #fff; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      border-radius: 8px; 
+      margin-top: 20px; 
+      max-width: 900px; /* <--- FIXED WIDTH */
+      margin-left: auto; 
+      margin-right: auto;
+    }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
     .btn-toggle { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 600; color: white; }
@@ -91,6 +101,17 @@
       padding: 15px 0;
       margin-top: 30px;
       font-size: 0.85em;
+    }
+    
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead tr { position: absolute; top: -9999px; left: -9999px; }
+      tr { border: 1px solid #ccc; margin-bottom: 15px; }
+      td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
+      td:before { content: attr(data-label); position: absolute; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; text-align: left; }
     }
   </style>
 </head>
@@ -140,17 +161,17 @@
       <tbody>
         <% users.forEach(function(user) { %>
           <tr>
-            <td><%= user.username %></td>
-            <td><%= user.company ? user.company.name : 'N/A' %></td>
-            <td><%= user.role.toUpperCase() %></td>
-            <td>
+            <td data-label="Username"><%= user.username %></td>
+            <td data-label="Company"><%= user.company ? user.company.name : 'N/A' %></td>
+            <td data-label="Role"><%= user.role.toUpperCase() %></td>
+            <td data-label="Status">
               <% if (user.isApproved) { %>
                 <span style="color: green; font-weight: 600;">Enabled</span>
               <% } else { %>
                 <span style="color: red; font-weight: 600;">Disabled</span>
               <% } %>
             </td>
-            <td>
+            <td data-label="Action">
               <% if (user.isApproved) { %>
                 <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-disable" onclick="return confirm('Are you sure you want to DISABLE access for <%= user.username %>?');">Disable</a>
               <% } else { %>

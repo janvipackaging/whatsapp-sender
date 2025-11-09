@@ -69,12 +69,22 @@
     .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; }
+    /* NEW MAX-WIDTH ADDED HERE */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; margin-left: auto; margin-right: auto; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
     /* Form Styling */
-    form { background: #fff; border-radius: 8px; padding: 25px; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+    form { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 25px; 
+      max-width: 500px; /* <--- FIXED WIDTH */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      margin-bottom: 30px; 
+      margin-left: auto; 
+      margin-right: auto;
+    }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="password"] {
@@ -95,7 +105,7 @@
       font-weight: 600;
     }
     button:hover { background-color: #0056b3; }
-    .user-info { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee; }
+    .user-info { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee; max-width: 500px; margin-left: auto; margin-right: auto; }
 
     /* Footer Style */
     footer {

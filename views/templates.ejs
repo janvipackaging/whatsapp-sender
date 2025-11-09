@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Templates</title>
   
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
     /* Global Styles */
     body { 
@@ -57,21 +61,29 @@
       margin-bottom: 8px;
       margin-top: 8px;
       display: inline-block;
-      transition: background-color 0.2s;
       font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
     .nav-right { margin-left: auto; } 
-    .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; }
+    /* NEW MAX-WIDTH ADDED HERE */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; margin-left: auto; margin-right: auto; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
     /* Form Styling */
-    form { background: #fff; border-radius: 8px; padding: 25px; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+    form { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 25px; 
+      max-width: 800px; /* <--- FIXED WIDTH */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      margin-bottom: 30px; 
+      margin-left: auto; /* Centering fix */
+      margin-right: auto; /* Centering fix */
+    }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], select {
@@ -93,7 +105,16 @@
     button:hover { background-color: #0056b3; }
 
     /* Table Styling */
-    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 8px; max-width: 800px; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      background: #fff; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      border-radius: 8px; 
+      max-width: 800px; /* <--- FIXED WIDTH */
+      margin-left: auto; /* Centering fix */
+      margin-right: auto; /* Centering fix */
+    }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
     tr:last-child td { border-bottom: none; }
@@ -108,10 +129,21 @@
     }
     .btn-delete:hover { background-color: #c82333; }
 
+    /* Footer Style */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
+
     /* Responsive */
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
+      form, table { max-width: 100%; } /* Ensure it fits on tiny screens */
     }
   </style>
 </head>
@@ -205,5 +237,9 @@
       </tbody>
     </table>
   </div>
+  
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
 </body>
 </html>
