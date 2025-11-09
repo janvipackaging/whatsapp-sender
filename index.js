@@ -10,7 +10,7 @@ const MongoStore = require('connect-mongo');
 
 // --- Configs ---
 require('./config/passport')(passport); 
-const { isAuthenticated } = require('./config/auth'); 
+const { isAuthenticated, isAdmin } = require('./config/auth'); // <-- 1. IMPORT isAdmin
 
 // --- MODELS (Required for Dashboard data) ---
 const Contact = require('./models/Contact'); 
@@ -21,7 +21,6 @@ const Segment = require('./models/Segment');
 const User = require('./models/User'); 
 
 // --- CONTROLLERS (Required for routes) ---
-// Note: We MUST still import these controllers so they are available when the routes file loads them
 const campaignsController = require('./controllers/campaignsController'); 
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
@@ -39,12 +38,10 @@ connectDB();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- CRITICAL FIX: Explicitly set views path for Vercel stability ---
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-// --- END CRITICAL FIX ---
 
-// --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
+// --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
@@ -95,7 +92,6 @@ app.get('/', isAuthenticated, async (req, res) => {
 
 
 // --- Protected App Routes ---
-// This ensures Vercel loads the external files correctly.
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
@@ -103,6 +99,11 @@ app.use('/reports', isAuthenticated, require('./routes/reports'));
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
 app.use('/segments', isAuthenticated, require('./routes/segments'));
+
+// --- 2. ADD THIS NEW ADMIN-ONLY ROUTE ---
+// We use 'isAuthenticated' AND 'isAdmin' to protect it
+app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
+// --- END OF NEW ROUTE ---
 
 // --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 

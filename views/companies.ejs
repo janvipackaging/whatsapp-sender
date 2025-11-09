@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manage Users</title>
+  <title>Manage Companies</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,17 +68,44 @@
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
-    /* --- NEW: Content Wrapper --- */
+    /* Content Wrapper */
     .content-wrapper {
-      max-width: 900px; /* This controls the width */
-      margin: 0 auto;  /* This centers it */
+      max-width: 900px; 
+      margin: 0 auto;
     }
-    /* --- END NEW --- */
 
     /* Alert Box Styling */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+
+    /* Form Styling */
+    form { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 25px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      margin-bottom: 30px; 
+    }
+    div { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box; 
+    }
+    button { 
+      padding: 12px 20px; 
+      background-color: #007bff; 
+      color: white; 
+      border-radius: 5px; 
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
 
     /* Table Styling */
     table { 
@@ -87,16 +114,20 @@
       background: #fff; 
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       border-radius: 8px; 
-      margin-top: 20px; 
     }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
     tr:last-child td { border-bottom: none; }
-    .btn-toggle { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 600; color: white; }
-    .btn-disable { background-color: #dc3545; }
-    .btn-disable:hover { background-color: #c82333; }
-    .btn-enable { background-color: #28a745; }
-    .btn-enable:hover { background-color: #218838; }
+    .btn-delete {
+      background-color: #dc3545;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.9em;
+      font-weight: 500;
+    }
+    .btn-delete:hover { background-color: #c82333; }
     
     /* Footer Style */
     footer {
@@ -106,20 +137,6 @@
       padding: 15px 0;
       margin-top: 30px;
       font-size: 0.85em;
-    }
-    
-    /* Responsive */
-    @media (max-width: 950px) {
-      .content-wrapper { max-width: 95%; } 
-    }
-    @media (max-width: 600px) {
-      .container { padding: 15px; }
-      nav { padding: 10px 15px; }
-      table, thead, tbody, th, td, tr { display: block; }
-      thead tr { position: absolute; top: -9999px; left: -9999px; }
-      tr { border: 1px solid #ccc; margin-bottom: 15px; }
-      td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
-      td:before { content: attr(data-label); position: absolute; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; text-align: left; }
     }
   </style>
 </head>
@@ -147,8 +164,8 @@
   </nav>
   <div class="container">
     <div class="content-wrapper">
-      <h1>Manage Users</h1>
-      
+      <h1>Manage Companies</h1>
+
       <% if (success_msg && success_msg.length > 0) { %>
         <div class="alert alert-success"><%= success_msg %></div>
       <% } %>
@@ -156,43 +173,47 @@
         <div class="alert alert-error"><%= error_msg %></div>
       <% } %>
 
-      <h2>Approved Users</h2>
+      <h2>Add New Company</h2>
+      <form action="/companies/add" method="POST">
+        <div>
+          <label for="name">Company Name:</label>
+          <input type="text" name="name" id="name" placeholder="e.g., My Second Company" required>
+        </div>
+        <div>
+          <label for="numberId">WhatsApp Number ID:</label>
+          <input type="text" name="numberId" id="numberId" placeholder="e.g., 10000..." required>
+        </div>
+        <div>
+          <label for="whatsappToken">WhatsApp Permanent Token:</label>
+          <input type="text" name="whatsappToken" id="whatsappToken" placeholder="e.g., EAAW..." required>
+        </div>
+        <button type="submit">Save Company</button>
+      </form>
+
+      <h2>Saved Companies</h2>
       <table>
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Status</th>
+            <th>Company Name</th>
+            <th>Number ID</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          <% users.forEach(function(user) { %>
+          <% companies.forEach(function(company) { %>
             <tr>
-              <td data-label="Username"><%= user.username %></td>
-              <td data-label="Company"><%= user.company ? user.company.name : 'N/A' %></td>
-              <td data-label="Role"><%= user.role.toUpperCase() %></td>
-              <td data-label="Status">
-                <% if (user.isApproved) { %>
-                  <span style="color: green; font-weight: 600;">Enabled</span>
-                <% } else { %>
-                  <span style="color: red; font-weight: 600;">Disabled</span>
-                <% } %>
-              </td>
-              <td data-label="Action">
-                <% if (user.isApproved) { %>
-                  <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-disable" onclick="return confirm('Are you sure you want to DISABLE access for <%= user.username %>?');">Disable</a>
-                <% } else { %>
-                  <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-enable">Enable</a>
-                <% } %>
+              <td><%= company.name %></td>
+              <td><%= company.numberId %></td>
+              <td>
+                <a href="/companies/delete/<%= company._id %>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this company? This is permanent.');">Delete</a>
               </td>
             </tr>
           <% }); %>
         </tbody>
       </table>
-    </div> </div>
-
+    </div>
+  </div>
+  
   <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
   </footer>

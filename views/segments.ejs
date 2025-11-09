@@ -24,7 +24,7 @@
     }
     h1, h2 { color: #1e3a8a; margin-top: 0; }
     
-    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -67,8 +67,15 @@
     .nav-right { margin-left: auto; } 
     .btn-logout { background-color: #dc2626 !important; }
     
+    /* --- NEW: Content Wrapper --- */
+    .content-wrapper {
+      max-width: 900px; /* This controls the width */
+      margin: 0 auto;  /* This centers it */
+    }
+    /* --- END NEW --- */
+
     /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; margin-left: auto; margin-right: auto; }
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
@@ -77,11 +84,9 @@
       background: #fff; 
       border-radius: 8px; 
       padding: 25px; 
-      max-width: 500px; /* <--- FIXED WIDTH */
+      max-width: 500px; /* Keep forms narrow */
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       margin-bottom: 30px; 
-      margin-left: auto; 
-      margin-right: auto;
     }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -111,8 +116,6 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       border-radius: 8px; 
       max-width: 800px; /* <--- FIXED WIDTH */
-      margin-left: auto; 
-      margin-right: auto;
     }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
@@ -140,7 +143,7 @@
 
     /* Responsive */
     @media (max-width: 950px) {
-      form, table, .alert { max-width: 95%; }
+      .content-wrapper { max-width: 95%; } 
     }
     @media (max-width: 600px) {
       .container { padding: 15px; }
@@ -149,79 +152,80 @@
   </style>
 </head>
 <body>
+  
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+    </div>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
+    </div>
+  </nav>
   <div class="container">
-    
-    <nav>
-      <a href="/" class="brand-logo-container">
-          <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
-          Janvi Sender App
-      </a>
-      <div>
-        <a href="/contacts">Manage Contacts</a>
-        <a href="/campaigns">New Campaign</a>
-        <a href="/templates">Manage Templates</a>
-        <a href="/segments">Manage Segments</a>
-        <a href="/reports">Campaign Reports</a>
-        <a href="/inbox">View Inbox</a>
-        <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
-      </div>
-      <div class="nav-right">
-        <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
-        <a href="/users/profile" class="btn-profile">Your Profile</a>
-        <a href="/users/logout" class="btn-logout">Log Out</a>
-      </div>
-    </nav>
-    <h1>Manage Segments</h1>
+    <div class="content-wrapper">
+      <h1>Manage Segments</h1>
 
-    <% if (success_msg && success_msg.length > 0) { %>
-      <div class="alert alert-success"><%= success_msg %></div>
-    <% } %>
-    <% if (error_msg && error_msg.length > 0) { %>
-      <div class="alert alert-error"><%= error_msg %></div>
-    <% } %>
+      <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success"><%= success_msg %></div>
+      <% } %>
+      <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error"><%= error_msg %></div>
+      <% } %>
 
-    <h2>Create New Segment</h2>
-    <form action="/segments/add" method="POST">
-      <div>
-        <label for="name">Segment Name:</label>
-        <input type="text" name="name" id="name" placeholder="e.g., Mumbai Leads" required>
-      </div>
-      
-      <div>
-        <label for="companyId">Company:</label>
-        <select name="companyId" id="companyId" required>
-          <option value="">-- Select Company --</option>
-          <% companies.forEach(function(company) { %>
-            <option value="<%= company._id %>"><%= company.name %></option>
-          <% }); %>
-        </select>
-      </div>
-      
-      <button type="submit">Save Segment</button>
-    </form>
+      <h2>Create New Segment</h2>
+      <form action="/segments/add" method="POST">
+        <div>
+          <label for="name">Segment Name:</label>
+          <input type="text" name="name" id="name" placeholder="e.g., Mumbai Leads" required>
+        </div>
+        
+        <div>
+          <label for="companyId">Company:</label>
+          <select name="companyId" id="companyId" required>
+            <option value="">-- Select Company --</option>
+            <% companies.forEach(function(company) { %>
+              <option value="<%= company._id %>"><%= company.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        
+        <button type="submit">Save Segment</button>
+      </form>
 
-    <h2>Saved Segments</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Segment Name</th>
-          <th>Company</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% segments.forEach(function(segment) { %>
+      <h2>Saved Segments</h2>
+      <table>
+        <thead>
           <tr>
-            <td><%= segment.name %></td>
-            <td><%= segment.company ? segment.company.name : 'N/A' %></td>
-            <td>
-              <a href="/segments/delete/<%= segment._id %>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this segment? This will remove it from all contacts.');">Delete</a>
-            </td>
+            <th>Segment Name</th>
+            <th>Company</th>
+            <th>Action</th>
           </tr>
-        <% }); %>
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody>
+          <% segments.forEach(function(segment) { %>
+            <tr>
+              <td><%= segment.name %></td>
+              <td><%= segment.company ? segment.company.name : 'N/A' %></td>
+              <td>
+                <a href="/segments/delete/<%= segment._id %>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this segment? This will remove it from all contacts.');">Delete</a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div> </div>
   
   <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.

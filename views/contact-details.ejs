@@ -23,7 +23,7 @@
     a:hover { text-decoration: underline; }
     .breadcrumb { margin-bottom: 20px; font-size: 1.1em; }
 
-    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -64,6 +64,7 @@
     }
     nav a:hover { background-color: #3730a3; }
     .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
     /* Layout */
@@ -149,6 +150,10 @@
 
     @media (max-width: 900px) {
       .profile-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
     }
   </style>
 </head>

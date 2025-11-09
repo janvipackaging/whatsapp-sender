@@ -19,12 +19,12 @@
     }
     .container {
       padding: 30px;
-      max-width: 1200px;
+      max-width: 1300px;
       margin: 0 auto;
     }
     h1, h2 { color: #1e3a8a; margin-top: 0; }
     
-    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -68,17 +68,15 @@
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
-    /* Alert Box Styling */
-    /* NEW MAX-WIDTH ADDED HERE */
-    .alert { 
-        padding: 15px; 
-        margin-bottom: 20px; 
-        border-radius: 5px; 
-        font-weight: 500; 
-        max-width: 500px; 
-        margin-left: auto; 
-        margin-right: auto; /* Centering the alert box */
+    /* --- NEW: Content Wrapper --- */
+    .content-wrapper {
+      max-width: 900px; /* This controls the width */
+      margin: 0 auto;  /* This centers it */
     }
+    /* --- END NEW --- */
+
+    /* Alert Box Styling */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; margin-left: auto; margin-right: auto; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
@@ -90,8 +88,8 @@
       max-width: 500px; /* <--- FIXED WIDTH */
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       margin-bottom: 30px; 
-      margin-left: auto; /* Centering the form */
-      margin-right: auto; /* Centering the form */
+      margin-left: auto; 
+      margin-right: auto;
     }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -125,6 +123,9 @@
       font-size: 0.85em;
     }
      /* Responsive */
+    @media (max-width: 950px) {
+      .content-wrapper { max-width: 95%; } 
+    }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
@@ -133,60 +134,61 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    
-    <nav>
-      <a href="/" class="brand-logo-container">
-          <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
-          Janvi Sender App
-      </a>
-      <div>
-        <a href="/contacts">Manage Contacts</a>
-        <a href="/campaigns">New Campaign</a>
-        <a href="/templates">Manage Templates</a>
-        <a href="/segments">Manage Segments</a>
-        <a href="/reports">Campaign Reports</a>
-        <a href="/inbox">View Inbox</a>
-        <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
-      </div>
-      <div class="nav-right">
-        <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
-        <a href="/users/profile" class="btn-profile">Your Profile</a>
-        <a href="/users/logout" class="btn-logout">Log Out</a>
-      </div>
-    </nav>
-    <h1>Your Profile</h1>
-
-    <% if (success_msg && success_msg.length > 0) { %>
-      <div class="alert alert-success"><%= success_msg %></div>
-    <% } %>
-    <% if (error_msg && error_msg.length > 0) { %>
-      <div class="alert alert-error"><%= error_msg %></div>
-    <% } %>
-
-    <div class="user-info">
-      <p><strong>Username:</strong> <%= user.username %></p>
-      <p><strong>Role:</strong> <%= user.role.toUpperCase() %></p>
-      <p><strong>Company ID:</strong> <%= user.company %></p>
+  
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
     </div>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="content-wrapper">
+      <h1>Your Profile</h1>
 
-    <h2>Change Your Password</h2>
-    <form action="/users/profile" method="POST">
-      <div>
-        <label for="oldPassword">Current Password:</label>
-        <input type="password" name="oldPassword" id="oldPassword" required>
+      <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success"><%= success_msg %></div>
+      <% } %>
+      <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error"><%= error_msg %></div>
+      <% } %>
+
+      <div class="user-info">
+        <p><strong>Username:</strong> <%= user.username %></p>
+        <p><strong>Role:</strong> <%= user.role.toUpperCase() %></p>
+        <p><strong>Company ID:</strong> <%= user.company %></p>
       </div>
-      <div>
-        <label for="newPassword">New Password (min 6 characters):</label>
-        <input type="password" name="newPassword" id="newPassword" required>
-      </div>
-      <div>
-        <label for="newPassword2">Confirm New Password:</label>
-        <input type="password" name="newPassword2" id="newPassword2" required>
-      </div>
-      <button type="submit">Update Password</button>
-    </form>
-  </div>
+
+      <h2>Change Your Password</h2>
+      <form action="/users/profile" method="POST">
+        <div>
+          <label for="oldPassword">Current Password:</label>
+          <input type="password" name="oldPassword" id="oldPassword" required>
+        </div>
+        <div>
+          <label for="newPassword">New Password (min 6 characters):</label>
+          <input type="password" name="newPassword" id="newPassword" required>
+        </div>
+        <div>
+          <label for="newPassword2">Confirm New Password:</label>
+          <input type="password" name="newPassword2" id="newPassword2" required>
+        </div>
+        <button type="submit">Update Password</button>
+      </form>
+    </div> </div>
 
   <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.

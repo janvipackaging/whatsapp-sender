@@ -5,21 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Blocklist</title>
   
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    h1, h2 { color: #333; }
-    a { color: #007bff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    /* Global Styles */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background-color: #f0f2f5; 
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    h1, h2 { color: #1e3a8a; margin-top: 0; }
     
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; }
+    /* Navigation (Header) */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-logout { background-color: #dc2626 !important; }
+
+    /* --- NEW: Content Wrapper --- */
+    .content-wrapper {
+      max-width: 900px; /* This controls the width */
+      margin: 0 auto;  /* This centers it */
+    }
+    /* --- END NEW --- */
+    
+    /* Alert Box Styling */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
     /* Form Styling */
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 800px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .form-group { grid-column: span 1; }
     .form-full { grid-column: span 2; }
-    form { background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+    form { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 25px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      margin-bottom: 30px; 
+    }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="tel"], select {
       width: 100%;
@@ -36,80 +107,147 @@
       border: none;
       font-size: 1em;
       cursor: pointer;
+      font-weight: 600;
     }
     button:hover { background-color: #c82333; }
 
     /* Table Styling */
-    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 8px; margin-top: 20px; max-width: 800px; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      background: #fff; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      border-radius: 8px; 
+      margin-top: 20px; 
+    }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
-    .btn-remove { background-color: #ffc107; color: #333; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 600; }
+    .btn-remove { 
+      background-color: #ffc107; 
+      color: #333; 
+      padding: 5px 10px; 
+      border-radius: 4px; 
+      text-decoration: none; 
+      font-weight: 600; 
+      font-size: 0.9em;
+    }
     .btn-remove:hover { background-color: #e0a800; }
+    
+    /* Footer Style */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
+
+    /* Responsive */
+    @media (max-width: 950px) {
+      .content-wrapper { max-width: 95%; } 
+    }
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group, .form-full { grid-column: span 1; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead tr { position: absolute; top: -9999px; left: -9999px; }
+      tr { border: 1px solid #ccc; margin-bottom: 15px; }
+      td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
+      td:before { content: attr(data-label); position: absolute; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; text-align: left; }
+    }
   </style>
 </head>
 <body>
 
-  <h1>Manage Blocklist</h1>
-  <p><a href="/">&larr; Back to Dashboard</a></p>
-
-  <% if (success_msg && success_msg.length > 0) { %>
-    <div class="alert alert-success"><%= success_msg %></div>
-  <% } %>
-  <% if (error_msg && error_msg.length > 0) { %>
-    <div class="alert alert-error"><%= error_msg %></div>
-  <% } %>
-
-  <h2>Add Number to Blocklist</h2>
-  <form action="/blocklist/add" method="POST">
-    <div class="form-grid">
-      <div class="form-group">
-        <label for="phone">Phone Number (E.164 format):</label>
-        <input type="tel" name="phone" id="phone" placeholder="e.g., +14155552671" required>
-      </div>
-      <div class="form-group">
-        <label for="companyId">Select Company (Segregation):</label>
-        <select name="companyId" id="companyId" required>
-          <option value="">-- Block for which Company --</option>
-          <% companies.forEach(function(company) { %>
-            <option value="<%= company._id %>"><%= company.name %></option>
-          <% }); %>
-        </select>
-      </div>
-      <div class="form-full">
-        <label for="reason">Reason (Optional):</label>
-        <input type="text" name="reason" id="reason" placeholder="e.g., Customer Opt-Out via SMS">
-      </div>
-      <div class="form-full">
-        <button type="submit">Block Number</button>
-      </div>
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
     </div>
-  </form>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="content-wrapper">
+      <h1>Manage Blocklist</h1>
 
-  <h2>Current Blocked Numbers</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Phone Number</th>
-        <th>Company</th>
-        <th>Reason</th>
-        <th>Date Added</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% blockedNumbers.forEach(function(block) { %>
-        <tr>
-          <td><%= block.phone %></td>
-          <td><%= block.company ? block.company.name : 'N/A' %></td>
-          <td><%= block.reason %></td>
-          <td><%= new Date(block.createdAt).toLocaleDateString() %></td>
-          <td>
-            <a href="/blocklist/remove/<%= block._id %>" class="btn-remove">Remove</a>
-          </td>
-        </tr>
-      <% }); %>
-    </tbody>
-  </table>
+      <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success"><%= success_msg %></div>
+      <% } %>
+      <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error"><%= error_msg %></div>
+      <% } %>
 
+      <h2>Add Number to Blocklist</h2>
+      <form action="/blocklist/add" method="POST">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="phone">Phone Number (E.164 format):</label>
+            <input type="tel" name="phone" id="phone" placeholder="e.g., +14155552671" required>
+          </div>
+          <div class="form-group">
+            <label for="companyId">Select Company (Segregation):</label>
+            <select name="companyId" id="companyId" required>
+              <option value="">-- Block for which Company --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="form-full">
+            <label for="reason">Reason (Optional):</label>
+            <input type="text" name="reason" id="reason" placeholder="e.g., Customer Opt-Out via SMS">
+          </div>
+          <div class="form-full">
+            <button type="submit">Block Number</button>
+          </div>
+        </div>
+      </form>
+
+      <h2>Current Blocked Numbers</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Phone Number</th>
+            <th>Company</th>
+            <th>Reason</th>
+            <th>Date Added</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% blockedNumbers.forEach(function(block) { %>
+            <tr>
+              <td data-label="Phone"><%= block.phone %></td>
+              <td data-label="Company"><%= block.company ? block.company.name : 'N/A' %></td>
+              <td data-label="Reason"><%= block.reason %></td>
+              <td data-label="Date"><%= new Date(block.createdAt).toLocaleDateString() %></td>
+              <td data-label="Action">
+                <a href="/blocklist/remove/<%= block._id %>" class="btn-remove" onclick="return confirm('Are you sure you want to remove this block?');">Remove</a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div> </div>
+
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
 </body>
 </html>
