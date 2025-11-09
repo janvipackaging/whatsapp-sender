@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
   
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
     /* Global Styles */
     body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      font-family: 'Inter', sans-serif; /* Applied new font */
       margin: 0; 
       background-color: #f0f2f5; 
       color: #333;
@@ -21,7 +25,7 @@
     h1 { color: #1e3a8a; margin-top: 0; }
     h2 { color: #333; font-size: 1.5em; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
 
-    /* Navigation */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -31,6 +35,26 @@
       flex-wrap: wrap;
       align-items: center;
     }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .brand-logo-container:hover { opacity: 0.9; }
+    .logo-img {
+      height: 35px; /* Size for mobile/nav */
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+
     nav a { 
       padding: 8px 15px; 
       text-decoration: none; 
@@ -181,6 +205,17 @@
       transition: background-color 0.2s;
     }
     .widget form button:hover { background-color: #0056b3; }
+    
+    /* Footer Style */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
+
 
     /* Responsive */
     @media (max-width: 1000px) {
@@ -203,16 +238,21 @@
 <body>
 
   <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="/images/Janvi-Packaging-Logo.png" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
     <div>
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
-      <a href="/segments">Manage Segments</a> <a href="/reports">Campaign Reports</a>
+      <a href="/segments">Manage Segments</a> 
+      <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
     </div>
     <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
       <a href="/users/profile" class="btn-profile">Your Profile</a>
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
@@ -354,5 +394,9 @@
         </form>
       </div>
 
-    </div> </div> </body>
+    </div> </div> <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
+
+</body>
 </html>

@@ -1,7 +1,7 @@
 // --- Imports ---
 require('dotenv').config(); 
 const express = require('express');
-const session = require('express-session');
+const session = require('express-session'); 
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
@@ -37,6 +37,10 @@ connectDB();
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
+
+// --- NEW LINE: Tell Express to serve static files (like logo) from the 'public' folder ---
+app.use(express.static('public'));
+// --- END OF NEW LINE ---
 
 // --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
@@ -95,10 +99,7 @@ app.use('/templates', isAuthenticated, require('./routes/templates'));
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
-
-// --- ADD THIS NEW ROUTE ---
 app.use('/segments', isAuthenticated, require('./routes/segments'));
-// --- END OF NEW ROUTE ---
 
 // --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 

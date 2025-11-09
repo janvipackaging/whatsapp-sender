@@ -3,11 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - WhatsApp Sender</title>
+  <title>Login - Janvi Sender App</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f7f6; }
-    .login-container { background: #fff; border-radius: 8px; padding: 30px 40px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    h1 { text-align: center; color: #333; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background-color: #f0f2f5; 
+    }
+    .login-container { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 30px 40px; 
+      width: 400px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      border: 1px solid #e0e0e0;
+    }
+    /* NEW BRANDING STYLES */
+    .brand-header {
+        text-align: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .logo-img {
+        height: 50px; 
+        margin-bottom: 10px;
+        background-color: white;
+        border-radius: 6px;
+        padding: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .brand-title {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #1e3a8a; /* Deep blue from your dashboard nav */
+        margin-top: 5px;
+    }
+    /* END NEW BRANDING STYLES */
+
     form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="password"] {
@@ -16,6 +57,7 @@
       border: 1px solid #ddd;
       border-radius: 5px;
       box-sizing: border-box; 
+      font-size: 1em;
     }
     button { 
       padding: 12px 20px; 
@@ -26,6 +68,8 @@
       font-size: 1em;
       cursor: pointer;
       width: 100%;
+      font-weight: 600;
+      transition: background-color 0.2s;
     }
     button:hover { background-color: #0056b3; }
     p { text-align: center; }
@@ -61,8 +105,11 @@
 <body>
 
   <div class="login-container">
-    <h1>Login</h1>
-
+    <div class="brand-header">
+        <img src="/images/Janvi-Packaging-Logo.png" alt="Janvi Packaging Logo" class="logo-img">
+        <div class="brand-title">Janvi Sender App Login</div>
+    </div>
+    
     <% if (success_msg && success_msg.length > 0) { %>
       <div class="alert alert-success">
         <%= success_msg %>
@@ -103,6 +150,5 @@
       Need an account? <a href="/users/register">Register Here</a>
     </p>
   </div>
-
 </body>
 </html>

@@ -3,22 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pending Approval</title>
+  <title>Pending Approval - Janvi Sender App</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f7f6; flex-direction: column; }
-    .status-box { background: #fff; border-radius: 8px; padding: 40px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; border-left: 5px solid #ffc107; }
-    h1 { color: #ffc107; }
-    p { color: #555; font-size: 1.1em; line-height: 1.6; }
-    a { color: #007bff; text-decoration: none; font-weight: 600; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background-color: #f0f2f5; 
+      flex-direction: column; 
+    }
+    /* NEW BRANDING HEADER STYLES */
+    .brand-header {
+        text-align: center;
+        margin-bottom: 25px;
+        padding: 10px 0;
+    }
+    .logo-img {
+        height: 50px; 
+        margin-bottom: 10px;
+        background-color: white;
+        border-radius: 6px;
+        padding: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .brand-title {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #1e3a8a; /* Deep blue from your dashboard nav */
+        margin-top: 5px;
+    }
+    /* END NEW BRANDING STYLES */
+
+    .status-box { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 30px 40px; 
+      width: 450px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      text-align: center; 
+      border-left: 5px solid #ffc107; /* Yellow border for warning/pending */
+      border: 1px solid #ffecb5; /* Light border */
+    }
+    h1 { 
+      color: #e3a008; /* Darker yellow for better visibility */
+      font-size: 1.8em;
+      margin-bottom: 15px;
+    }
+    p { 
+      color: #555; 
+      font-size: 1.1em; 
+      line-height: 1.6; 
+      margin-bottom: 15px;
+    }
+    a { 
+      color: #007bff; 
+      text-decoration: none; 
+      font-weight: 600; 
+      transition: color 0.2s;
+    }
+    a:hover { color: #0056b3; }
   </style>
 </head>
 <body>
+  
+  <div class="brand-header">
+      <img src="/images/Janvi-Packaging-Logo.png" alt="Janvi Packaging Logo" class="logo-img">
+      <div class="brand-title">Janvi Sender App</div>
+  </div>
+
   <div class="status-box">
     <h1>Account Pending Approval</h1>
-    <p>Thank you for registering. Your request has been successfully submitted.</p>
-    <p>For security, a Super-Admin must manually review and approve your account.</p>
-    <p>You will be able to log in once your status has been updated.</p>
-    <p><a href="/users/login">Return to Login Page</a></p>
+    <p>Thank you for submitting your account request.</p>
+    <p>For security, your request requires manual review and approval by the **Super-Admin**.</p>
+    <p>You will be able to log in once your status has been updated in the system.</p>
+    <p style="margin-top: 25px;"><a href="/users/login">Click here to return to the Login Page</a></p>
   </div>
 </body>
 </html>
