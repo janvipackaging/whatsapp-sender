@@ -70,7 +70,15 @@
     
     /* Alert Box Styling */
     /* NEW MAX-WIDTH ADDED HERE */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .alert { 
+        padding: 15px; 
+        margin-bottom: 20px; 
+        border-radius: 5px; 
+        font-weight: 500; 
+        max-width: 500px; 
+        margin-left: auto; 
+        margin-right: auto; /* Centering the alert box */
+    }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
@@ -82,8 +90,8 @@
       max-width: 500px; /* <--- FIXED WIDTH */
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       margin-bottom: 30px; 
-      margin-left: auto; 
-      margin-right: auto;
+      margin-left: auto; /* Centering the form */
+      margin-right: auto; /* Centering the form */
     }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -115,6 +123,12 @@
       padding: 15px 0;
       margin-top: 30px;
       font-size: 0.85em;
+    }
+     /* Responsive */
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+      form, .user-info { max-width: 100%; }
     }
   </style>
 </head>

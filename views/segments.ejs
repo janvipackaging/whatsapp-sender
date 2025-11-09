@@ -80,8 +80,8 @@
       max-width: 500px; /* <--- FIXED WIDTH */
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       margin-bottom: 30px; 
-      margin-left: auto; /* Centering fix */
-      margin-right: auto; /* Centering fix */
+      margin-left: auto; 
+      margin-right: auto;
     }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -100,7 +100,6 @@
       border: none;
       font-size: 1em;
       cursor: pointer;
-      font-weight: 600;
     }
     button:hover { background-color: #0056b3; }
 
@@ -112,8 +111,8 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       border-radius: 8px; 
       max-width: 800px; /* <--- FIXED WIDTH */
-      margin-left: auto; /* Centering fix */
-      margin-right: auto; /* Centering fix */
+      margin-left: auto; 
+      margin-right: auto;
     }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
@@ -140,10 +139,12 @@
     }
 
     /* Responsive */
+    @media (max-width: 950px) {
+      form, table, .alert { max-width: 95%; }
+    }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      form, table { max-width: 100%; }
     }
   </style>
 </head>

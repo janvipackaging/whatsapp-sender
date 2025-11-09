@@ -68,8 +68,16 @@
     .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
-    /* NEW MAX-WIDTH ADDED HERE */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 800px; margin-left: auto; margin-right: auto; }
+    /* *** NEW CENTERING AND WIDTH *** */
+    .alert { 
+        padding: 15px; 
+        margin-bottom: 20px; 
+        border-radius: 5px; 
+        font-weight: 500; 
+        max-width: 800px; 
+        margin-left: auto; 
+        margin-right: auto; /* Centering the alert box */
+    }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
@@ -81,8 +89,8 @@
       max-width: 800px; /* <--- FIXED WIDTH */
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       margin-bottom: 30px; 
-      margin-left: auto; /* Centering fix */
-      margin-right: auto; /* Centering fix */
+      margin-left: auto; /* Centering the form */
+      margin-right: auto; /* Centering the form */
     }
     div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -111,9 +119,9 @@
       background: #fff; 
       box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       border-radius: 8px; 
-      max-width: 800px; /* <--- FIXED WIDTH */
-      margin-left: auto; /* Centering fix */
-      margin-right: auto; /* Centering fix */
+      max-width: 900px; /* <--- SLIGHTLY WIDER TABLE */
+      margin-left: auto; /* Centering the table */
+      margin-right: auto; /* Centering the table */
     }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f4f7f6; }
@@ -140,10 +148,12 @@
     }
 
     /* Responsive */
+    @media (max-width: 950px) {
+      form, table, .alert { max-width: 95%; }
+    }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      form, table { max-width: 100%; } /* Ensure it fits on tiny screens */
     }
   </style>
 </head>
