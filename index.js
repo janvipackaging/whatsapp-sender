@@ -36,6 +36,12 @@ connectDB();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
+// --- CRITICAL FIX: STATIC ASSET HANDLER MOVED TO THE TOP ---
+// This ensures the logo loads instantly and publicly, before the session/passport middleware.
+app.use('/images', express.static(path.join(__dirname, 'public/images'))); 
+// --- END CRITICAL FIX ---
+
+
 // CRITICAL FIX: Explicitly set views path for Vercel stability
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -50,7 +56,7 @@ app.use(session({
     collectionName: 'sessions'
   }),
   cookie: { 
-    maxAge: 1000 * 60 * 60 * 24 * 15 // 15 DAYS
+    maxAge: 1000 * 60 * 60 * 24 * 15 
   }
 }));
 
@@ -60,11 +66,7 @@ app.use(flash());
 
 
 // --- Routes ---
-
-// 1. PUBLIC ASSET ROUTE (CRITICAL FIX FOR LOGO)
-// This must come *before* all other middleware to serve the logo!
-app.use('/images', express.static(path.join(__dirname, 'public/images')));
-
+// ... (The rest of the routes remain the same)
 
 // @route   GET /
 // @desc    Show the main "True Dashboard" (PROTECTED)
@@ -95,7 +97,7 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// 2. PROTECTED APP ROUTES (Loaded via app.use)
+// --- Protected App Routes ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
@@ -104,7 +106,7 @@ app.use('/inbox', isAuthenticated, require('./routes/inbox'));
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
 app.use('/segments', isAuthenticated, require('./routes/segments'));
 
-// 3. PUBLIC/API ROUTES
+// --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 
 app.use('/users', require('./routes/users'));
 
