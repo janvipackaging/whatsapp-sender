@@ -1,5 +1,5 @@
 // --- Imports ---
-const path = require('path'); // CRITICAL NEW IMPORT for view lookup
+const path = require('path');
 require('dotenv').config(); 
 const express = require('express');
 const session = require('express-session'); 
@@ -19,8 +19,6 @@ const Message = require('./models/Message');
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-
-// --- CONTROLLERS (Required for routes) ---
 const campaignsController = require('./controllers/campaignsController'); 
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
@@ -38,18 +36,11 @@ connectDB();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- CRITICAL FIX 1: Remove conflicting static file middleware ---
-// The line 'app.use(express.static('public'));' has been deleted, 
-// as vercel.json handles it, and keeping both causes conflicts.
-// --- END CRITICAL FIX 1 ---
-
-
-// --- CRITICAL FIX 2: Explicitly set views path for Vercel stability ---
+// CRITICAL FIX: Explicitly set views path for Vercel stability
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-// --- END CRITICAL FIX 2 ---
 
-// --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
+// --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
@@ -69,6 +60,11 @@ app.use(flash());
 
 
 // --- Routes ---
+
+// 1. PUBLIC ASSET ROUTE (CRITICAL FIX FOR LOGO)
+// This must come *before* all other middleware to serve the logo!
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+
 
 // @route   GET /
 // @desc    Show the main "True Dashboard" (PROTECTED)
@@ -99,7 +95,7 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes ---
+// 2. PROTECTED APP ROUTES (Loaded via app.use)
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
@@ -108,7 +104,7 @@ app.use('/inbox', isAuthenticated, require('./routes/inbox'));
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
 app.use('/segments', isAuthenticated, require('./routes/segments'));
 
-// --- Public/API Routes ---
+// 3. PUBLIC/API ROUTES
 app.use('/api', require('./routes/api')); 
 app.use('/users', require('./routes/users'));
 
