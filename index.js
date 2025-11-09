@@ -1,5 +1,5 @@
 // --- Imports ---
-const path = require('path'); // <-- 1. CRITICAL NEW IMPORT
+const path = require('path'); // CRITICAL NEW IMPORT for view lookup
 require('dotenv').config(); 
 const express = require('express');
 const session = require('express-session'); 
@@ -12,7 +12,7 @@ const MongoStore = require('connect-mongo');
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS (Required for Dashboard data) ---
+// --- MODELS & CONTROLLERS (For stable startup) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
@@ -37,12 +37,17 @@ connectDB();
 // --- Middleware ---
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
-app.use(express.static('public')); // Serve logo/static files
 
-// --- 2. CRITICAL FIX: Explicitly set views path for Vercel stability ---
+// --- CRITICAL FIX 1: Remove conflicting static file middleware ---
+// The line 'app.use(express.static('public'));' has been deleted, 
+// as vercel.json handles it, and keeping both causes conflicts.
+// --- END CRITICAL FIX 1 ---
+
+
+// --- CRITICAL FIX 2: Explicitly set views path for Vercel stability ---
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-// --- END CRITICAL FIX ---
+// --- END CRITICAL FIX 2 ---
 
 // --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
