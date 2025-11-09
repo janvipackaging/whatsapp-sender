@@ -6,21 +6,89 @@
   <title>New Campaign</title>
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    h1, h2 { color: #333; }
-    a { color: #007bff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
+    /* Global Styles */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background-color: #f0f2f5; 
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    h1 { color: #1e3a8a; margin-top: 0; }
+    
+    /* Navigation */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .brand-logo-container:hover { opacity: 0.9; }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      transition: background-color 0.2s;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-profile:hover { background-color: #475569 !important; }
+    .btn-logout { background-color: #dc2626 !important; }
+    .btn-logout:hover { background-color: #b91c1c !important; }
+    
     /* Form Styling */
-    form { background: #fff; border-radius: 8px; padding: 25px; max-width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
-    div { margin-bottom: 20px; }
+    form { 
+      background: #fff; 
+      border-radius: 8px; 
+      padding: 25px; 
+      max-width: 500px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+      margin-bottom: 30px; 
+      margin-left: auto; 
+      margin-right: auto;
+    }
+    form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="tel"], select {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ddd;
       border-radius: 5px;
       box-sizing: border-box; 
+      font-size: 1em;
     }
     button { 
       padding: 12px 20px; 
@@ -30,85 +98,117 @@
       border: none;
       font-size: 1em;
       cursor: pointer;
+      width: 100%;
+      font-weight: 600;
+      transition: background-color 0.2s;
     }
     .btn-blue { background-color: #007bff; }
     .btn-blue:hover { background-color: #0056b3; }
     .btn-green { background-color: #28a745; }
     .btn-green:hover { background-color: #218838; }
     hr { border: 0; border-top: 1px solid #eee; margin: 40px 0; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+      form { width: 100%; padding: 15px; }
+    }
   </style>
 </head>
 <body>
-
-  <h1>Create New Campaign</h1>
-  <p><a href="/">&larr; Back to Dashboard</a> | <a href="/templates">Manage Templates</a></p>
-
-  <h2>1. Send Test Message (Optional)</h2>
-  <form action="/campaigns/test" method="POST">
+  
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
     <div>
-      <label for="companyId-test">Select Company:</label>
-      <select name="companyId" id="companyId-test" required>
-        <option value="">-- Please Select --</option>
-        <% companies.forEach(function(company) { %>
-          <option value="<%= company._id %>"><%= company.name %></option>
-        <% }); %>
-      </select>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
     </div>
-    <div>
-      <label for="templateId-test">Select Template:</label>
-      <select name="templateId" id="templateId-test" required>
-        <option value="">-- Please Select --</option>
-        <% templates.forEach(function(template) { %>
-          <option value="<%= template._id %>">
-            <%= template.name %> (<%= template.templateName %>)
-          </option>
-        <% }); %>
-      </select>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
-    <div>
-      <label for="testPhone">Your Phone Number:</label>
-      <input type="tel" name="testPhone" id="testPhone" placeholder="e.g., +919607732123" required>
-    </div>
-    <button type="submit" class="btn-green">Send Test</button>
-  </form>
-  <hr>
+  </nav>
 
-  <h2>2. Start Full Campaign</h2>
-  <form action="/campaigns/start" method="POST">
-    <div>
-      <label for="companyId">Select Company:</label>
-      <select name="companyId" id="companyId" required>
-        <option value="">-- Please Select --</option>
-        <% companies.forEach(function(company) { %>
-          <option value="<%= company._id %>"><%= company.name %></option>
-        <% }); %>
-      </select>
-    </div>
+  <div class="container">
+    <h1>New Campaign</h1>
+    <hr>
+    <h2>1. Send Test Message (Optional)</h2>
+    <form action="/campaigns/test" method="POST">
+      <div>
+        <label for="companyId-test">Select Company:</label>
+        <select name="companyId" id="companyId-test" required>
+          <option value="">-- Please Select --</option>
+          <% companies.forEach(function(company) { %>
+            <option value="<%= company._id %>"><%= company.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div>
+        <label for="templateId-test">Select Template:</label>
+        <select name="templateId" id="templateId-test" required>
+          <option value="">-- Please Select --</option>
+          <% templates.forEach(function(template) { %>
+            <option value="<%= template._id %>">
+              <%= template.name %> (<%= template.templateName %>)
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <div>
+        <label for="testPhone">Your Phone Number:</label>
+        <input type="tel" name="testPhone" id="testPhone" placeholder="e.g., +919607732123" required>
+      </div>
+      <button type="submit" class="btn-green">Send Test</button>
+    </form>
 
-    <div>
-      <label for="segmentId">Select Segment:</label>
-      <select name="segmentId" id="segmentId" required>
-        <option value="">-- Please Select --</option>
-        <% segments.forEach(function(segment) { %>
-          <option value="<%= segment._id %>"><%= segment.name %></option>
-        <% }); %>
-      </select>
-    </div>
+    <hr>
 
-    <div>
-      <label for="templateId">Select Template:</label>
-      <select name="templateId" id="templateId" required>
-        <option value="">-- Please Select --</option>
-        <% templates.forEach(function(template) { %>
-          <option value="<%= template._id %>">
-            <%= template.name %> (<%= template.templateName %>)
-          </option>
-        <% }); %>
-      </select>
-    </div>
-    
-    <button type="submit" class="btn-blue">Start Campaign</button>
-  </form>
+    <h2>2. Start Full Campaign</h2>
+    <form action="/campaigns/start" method="POST">
+      <div>
+        <label for="companyId">Select Company:</label>
+        <select name="companyId" id="companyId" required>
+          <option value="">-- Please Select --</option>
+          <% companies.forEach(function(company) { %>
+            <option value="<%= company._id %>"><%= company.name %></option>
+          <% }); %>
+        </select>
+      </div>
 
+      <div>
+        <label for="segmentId">Select Segment:</label>
+        <select name="segmentId" id="segmentId" required>
+          <option value="">-- Please Select --</option>
+          <% segments.forEach(function(segment) { %>
+            <option value="<%= segment._id %>"><%= segment.name %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div>
+        <label for="templateId">Select Template:</label>
+        <select name="templateId" id="templateId" required>
+          <option value="">-- Please Select --</option>
+          <% templates.forEach(function(template) { %>
+            <option value="<%= template._id %>">
+              <%= template.name %> (<%= template.templateName %>)
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      
+      <button type="submit" class="btn-blue">Start Campaign</button>
+    </form>
+  </div>
 </body>
 </html>

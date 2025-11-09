@@ -6,22 +6,61 @@
   <title>Manage Contacts</title>
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background-color: #f4f7f6; }
+    body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
     .container { max-width: 1400px; margin: 0 auto; padding: 30px; }
-    h1, h2 { color: #333; }
+    h1, h2 { color: #1e3a8a; margin-top: 0; }
     a { color: #007bff; text-decoration: none; }
     a:hover { text-decoration: underline; }
     
-    /* Nav */
-    .breadcrumb { margin-bottom: 20px; font-size: 1.1em; }
-    .breadcrumb a { color: #007bff; }
+    /* Navigation (Header) */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
-    /* Form Section */
+    /* Form/Widget Styles */
     .management-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -29,10 +68,8 @@
       margin-bottom: 30px;
     }
     .widget { background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    .widget h2 { margin-top: 0; }
+    form { margin-top: 20px; }
     
-    form div { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="file"], input[type="text"], input[type="tel"], select {
       width: 100%;
       padding: 10px;
@@ -50,11 +87,8 @@
       cursor: pointer;
     }
     .btn-green { background-color: #28a745; }
-    .btn-green:hover { background-color: #218838; }
     .btn-grey { background-color: #6c757d; }
-    .btn-grey:hover { background-color: #5a6268; }
     .btn-blue { background-color: #007bff; }
-    .btn-blue:hover { background-color: #0056b3; }
 
     /* Filter Form */
     .filter-form {
@@ -64,28 +98,20 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
       display: grid;
-      grid-template-columns: 1fr 1fr 2fr 1fr; /* 4 columns */
+      grid-template-columns: 1fr 1fr 2fr 1fr;
       gap: 20px;
       align-items: flex-end;
     }
-    .filter-group { flex-grow: 1; }
-    .filter-group label { margin-bottom: 5px; font-size: 0.9em; }
-
+    
     /* Table Styling */
     .table-widget { background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; white-space: nowrap; }
     th { background-color: #f4f7f6; }
-    tr:last-child td { border-bottom: none; }
-    .btn-view {
-      background-color: #007bff;
-      color: white;
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 0.9em;
-      font-weight: 500;
-    }
-    .btn-view:hover { background-color: #0056b3; }
+    .btn-view { background-color: #007bff; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: 500; }
+    
+    /* Footer Style */
+    footer { background-color: #1e3a8a; color: #ccc; text-align: center; padding: 15px 0; margin-top: 30px; font-size: 0.85em; }
 
     @media (max-width: 900px) {
       .management-section { grid-template-columns: 1fr; }
@@ -97,11 +123,29 @@
   </style>
 </head>
 <body>
+  
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+    </div>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
+    </div>
+  </nav>
 
   <div class="container">
-    <div class="breadcrumb">
-      <a href="/">&larr; Back to Dashboard</a>
-    </div>
     <h1>Manage Contacts</h1>
 
     <% if (success_msg && success_msg.length > 0) { %>
@@ -198,6 +242,7 @@
       </div>
       <button type="submit" class="btn-blue">Search / Filter</button>
     </form>
+
     <div class="table-widget">
       <table>
         <thead>
@@ -240,5 +285,8 @@
     </div>
   </div>
 
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
 </body>
 </html>

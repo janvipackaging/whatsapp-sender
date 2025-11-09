@@ -3,16 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inbox</title>
+  <title>Inbox - Customer Replies</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    h1 { color: #333; }
-    a { color: #007bff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    /* Global Styles */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background-color: #f0f2f5; 
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 { color: #1e3a8a; margin-top: 0; }
 
+    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      transition: background-color 0.2s;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-logout { background-color: #dc2626 !important; }
+    
     /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 90%; }
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 90%; margin-left: auto; margin-right: auto; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
@@ -24,6 +82,9 @@
       padding: 15px 20px;
       margin-bottom: 15px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 90%;
     }
     .message-header {
       border-bottom: 1px solid #eee;
@@ -32,13 +93,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap; /* For responsive */
+      flex-wrap: wrap;
     }
-    .message-contact { font-weight: 600; font-size: 1.1em; color: #333; }
+    .message-contact { font-weight: 600; font-size: 1.1em; color: #1e3a8a; } /* Updated color */
     .message-contact span { font-weight: 400; color: #555; font-size: 0.9em; }
     .message-time { font-size: 0.9em; color: #777; margin-top: 5px; }
     .message-body { font-size: 1em; color: #222; line-height: 1.5; }
-    .message-company { font-size: 0.85em; color: #007bff; font-weight: 500; }
+    .message-company { font-size: 0.85em; color: #4f46e5; font-weight: 500; } /* Updated color */
     
     /* Button Styles */
     .btn {
@@ -63,65 +124,90 @@
       margin-left: 20px;
     }
     .btn-read-all:hover { background-color: #138496; }
-
+    .header-actions { display: flex; justify-content: space-between; align-items: center; max-width: 90%; margin-left: auto; margin-right: auto; margin-top: 20px;}
+    
   </style>
 </head>
 <body>
-
-  <h1>Inbox - Customer Replies</h1>
-  <p>
-    <a href="/">&larr; Back to Dashboard</a>
-    <a href="/inbox/readall" class="btn-read-all">Mark All as Read</a>
-  </p>
-
-  <% if (success_msg && success_msg.length > 0) { %>
-    <div class="alert alert-success">
-      <%= success_msg %>
+  
+  <nav>
+    <a href="/" class="brand-logo-container">
+        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+        Janvi Sender App
+    </a>
+    <div>
+      <a href="/contacts">Manage Contacts</a>
+      <a href="/campaigns">New Campaign</a>
+      <a href="/templates">Manage Templates</a>
+      <a href="/segments">Manage Segments</a>
+      <a href="/reports">Campaign Reports</a>
+      <a href="/inbox">View Inbox</a>
+      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
     </div>
-  <% } %>
-  <% if (error_msg && error_msg.length > 0) { %>
-    <div class="alert alert-error">
-      <%= error_msg %>
+    <div class="nav-right">
+      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+      <a href="/users/profile" class="btn-profile">Your Profile</a>
+      <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
-  <% } %>
-  <ul class="message-list">
+  </nav>
+
+  <div class="container">
+    <h1>Inbox - Customer Replies</h1>
     
-    <% messages.forEach(function(message) { %>
-      <li class="message-item" style="<%= message.isRead ? '' : 'border-left: 5px solid #007bff;' %>">
-        <div class="message-header">
-          <div class="message-contact">
-            <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown Contact' %>
-            <span class="message-company">
-              (<%= message.company ? message.company.name : 'Unknown Company' %>)
-              <% if (!message.isRead) { %>
-                <span style="color: #dc3545; font-weight: 600;"> (NEW)</span>
-              <% } %>
-            </span>
-          </div>
-          <div style="display: flex; align-items: center; flex-wrap: wrap;">
-            <% if (!message.isRead) { %>
-              <a href="/inbox/read/<%= message._id %>" class="btn btn-read">Mark as Read</a>
-            <% } %>
-            <div class="message-time">
-              <%= new Date(message.createdAt).toLocaleString() %>
-            </div>
-          </div>
-        </div>
-        <div class="message-body">
-          <%= message.body %>
-        </div>
-      </li>
-    <% }); %>
+    <div class="header-actions">
+      <p><a href="/">&larr; Back to Dashboard</a></p>
+      <a href="/inbox/readall" class="btn-read-all">Mark All as Read</a>
+    </div>
 
-    <% if (messages.length === 0) { %>
-      <li class="message-item">
-        <div class="message-body">
-          You have no messages yet.
-        </div>
-      </li>
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success">
+        <%= success_msg %>
+      </div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error">
+        <%= error_msg %>
+      </div>
     <% } %>
 
-  </ul>
+    <ul class="message-list">
+      
+      <% messages.forEach(function(message) { %>
+        <li class="message-item" style="<%= message.isRead ? '' : 'border-left: 5px solid #007bff;' %>">
+          <div class="message-header">
+            <div class="message-contact">
+              <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown Contact' %>
+              <span class="message-company">
+                (<%= message.company ? message.company.name : 'Unknown Company' %>)
+                <% if (!message.isRead) { %>
+                  <span style="color: #dc3545; font-weight: 600;"> (NEW)</span>
+                <% } %>
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; flex-wrap: wrap;">
+              <% if (!message.isRead) { %>
+                <a href="/inbox/read/<%= message._id %>" class="btn btn-read">Mark as Read</a>
+              <% } %>
+              <div class="message-time">
+                <%= new Date(message.createdAt).toLocaleString() %>
+              </div>
+            </div>
+          </div>
+          <div class="message-body">
+            <%= message.body %>
+          </div>
+        </li>
+      <% }); %>
 
+      <% if (messages.length === 0) { %>
+        <li class="message-item">
+          <div class="message-body">
+            You have no messages yet.
+          </div>
+        </li>
+      <% } %>
+
+    </ul>
+  </div>
 </body>
 </html>

@@ -6,10 +6,64 @@
   <title>Manage Segments</title>
   
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    h1, h2 { color: #333; }
-    a { color: #007bff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    /* Global Styles */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background-color: #f0f2f5; 
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    h1, h2 { color: #1e3a8a; margin-top: 0; }
+    
+    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      transition: background-color 0.2s;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-logout { background-color: #dc2626 !important; }
     
     /* Alert Box Styling */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; }
@@ -53,61 +107,87 @@
       font-weight: 500;
     }
     .btn-delete:hover { background-color: #c82333; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+    }
   </style>
 </head>
 <body>
-
-  <h1>Manage Segments</h1>
-  <p><a href="/">&larr; Back to Dashboard</a></p>
-
-  <% if (success_msg && success_msg.length > 0) { %>
-    <div class="alert alert-success"><%= success_msg %></div>
-  <% } %>
-  <% if (error_msg && error_msg.length > 0) { %>
-    <div class="alert alert-error"><%= error_msg %></div>
-  <% } %>
-
-  <h2>Create New Segment</h2>
-  <form action="/segments/add" method="POST">
-    <div>
-      <label for="name">Segment Name:</label>
-      <input type="text" name="name" id="name" placeholder="e.g., Mumbai Leads" required>
-    </div>
+  <div class="container">
     
-    <div>
-      <label for="companyId">Company:</label>
-      <select name="companyId" id="companyId" required>
-        <option value="">-- Select Company --</option>
-        <% companies.forEach(function(company) { %>
-          <option value="<%= company._id %>"><%= company.name %></option>
-        <% }); %>
-      </select>
-    </div>
-    
-    <button type="submit">Save Segment</button>
-  </form>
+    <nav>
+      <a href="/" class="brand-logo-container">
+          <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+          Janvi Sender App
+      </a>
+      <div>
+        <a href="/contacts">Manage Contacts</a>
+        <a href="/campaigns">New Campaign</a>
+        <a href="/templates">Manage Templates</a>
+        <a href="/segments">Manage Segments</a>
+        <a href="/reports">Campaign Reports</a>
+        <a href="/inbox">View Inbox</a>
+        <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      </div>
+      <div class="nav-right">
+        <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+        <a href="/users/profile" class="btn-profile">Your Profile</a>
+        <a href="/users/logout" class="btn-logout">Log Out</a>
+      </div>
+    </nav>
+    <h1>Manage Segments</h1>
 
-  <h2>Saved Segments</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Segment Name</th>
-        <th>Company</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% segments.forEach(function(segment) { %>
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success"><%= success_msg %></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error"><%= error_msg %></div>
+    <% } %>
+
+    <h2>Create New Segment</h2>
+    <form action="/segments/add" method="POST">
+      <div>
+        <label for="name">Segment Name:</label>
+        <input type="text" name="name" id="name" placeholder="e.g., Mumbai Leads" required>
+      </div>
+      
+      <div>
+        <label for="companyId">Company:</label>
+        <select name="companyId" id="companyId" required>
+          <option value="">-- Select Company --</option>
+          <% companies.forEach(function(company) { %>
+            <option value="<%= company._id %>"><%= company.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      
+      <button type="submit">Save Segment</button>
+    </form>
+
+    <h2>Saved Segments</h2>
+    <table>
+      <thead>
         <tr>
-          <td><%= segment.name %></td>
-          <td><%= segment.company ? segment.company.name : 'N/A' %></td>
-          <td>
-            <a href="/segments/delete/<%= segment._id %>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this segment? This will remove it from all contacts.');">Delete</a>
-          </td>
+          <th>Segment Name</th>
+          <th>Company</th>
+          <th>Action</th>
         </tr>
-      <% }); %>
-    </tbody>
-  </table>
-
+      </thead>
+      <tbody>
+        <% segments.forEach(function(segment) { %>
+          <tr>
+            <td><%= segment.name %></td>
+            <td><%= segment.company ? segment.company.name : 'N/A' %></td>
+            <td>
+              <a href="/segments/delete/<%= segment._id %>" class="btn-delete" onclick="return confirm('Are you sure you want to delete this segment? This will remove it from all contacts.');">Delete</a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
 </body>
 </html>

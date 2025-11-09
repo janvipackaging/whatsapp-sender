@@ -3,14 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Profile</title>
+  <title>Your Profile - Janvi Sender App</title>
   
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background-color: #f4f7f6; }
-    h1, h2 { color: #333; }
-    a { color: #007bff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
+  <style>
+    /* Global Styles */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      margin: 0; 
+      background-color: #f0f2f5; 
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1, h2 { color: #1e3a8a; margin-top: 0; }
+    
+    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    nav { 
+      background-color: #1e3a8a; 
+      padding: 15px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 30px;
+      color: white;
+      font-size: 1.4em;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 35px; 
+      width: auto;
+      margin-right: 10px;
+      background-color: white;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    nav a { 
+      padding: 8px 15px; 
+      text-decoration: none; 
+      background-color: #4f46e5; 
+      color: white; 
+      border-radius: 4px; 
+      margin-right: 12px;
+      margin-bottom: 8px;
+      margin-top: 8px;
+      display: inline-block;
+      font-weight: 500;
+    }
+    nav a:hover { background-color: #3730a3; }
+    .nav-right { margin-left: auto; } 
+    .btn-profile { background-color: #64748b !important; }
+    .btn-logout { background-color: #dc2626 !important; }
+    
     /* Alert Box Styling */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
@@ -35,38 +92,80 @@
       border: none;
       font-size: 1em;
       cursor: pointer;
+      font-weight: 600;
     }
     button:hover { background-color: #0056b3; }
+    .user-info { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee; }
+
+    /* Footer Style */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
   </style>
 </head>
 <body>
+  <div class="container">
+    
+    <nav>
+      <a href="/" class="brand-logo-container">
+          <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+          Janvi Sender App
+      </a>
+      <div>
+        <a href="/contacts">Manage Contacts</a>
+        <a href="/campaigns">New Campaign</a>
+        <a href="/templates">Manage Templates</a>
+        <a href="/segments">Manage Segments</a>
+        <a href="/reports">Campaign Reports</a>
+        <a href="/inbox">View Inbox</a>
+        <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      </div>
+      <div class="nav-right">
+        <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
+        <a href="/users/profile" class="btn-profile">Your Profile</a>
+        <a href="/users/logout" class="btn-logout">Log Out</a>
+      </div>
+    </nav>
+    <h1>Your Profile</h1>
 
-  <h1>Your Profile</h1>
-  <p><a href="/">&larr; Back to Dashboard</a></p>
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success"><%= success_msg %></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error"><%= error_msg %></div>
+    <% } %>
 
-  <% if (success_msg && success_msg.length > 0) { %>
-    <div class="alert alert-success"><%= success_msg %></div>
-  <% } %>
-  <% if (error_msg && error_msg.length > 0) { %>
-    <div class="alert alert-error"><%= error_msg %></div>
-  <% } %>
-
-  <h2>Change Your Password</h2>
-  <form action="/users/profile" method="POST">
-    <div>
-      <label for="oldPassword">Current Password:</label>
-      <input type="password" name="oldPassword" id="oldPassword" required>
+    <div class="user-info">
+      <p><strong>Username:</strong> <%= user.username %></p>
+      <p><strong>Role:</strong> <%= user.role.toUpperCase() %></p>
+      <p><strong>Company ID:</strong> <%= user.company %></p>
     </div>
-    <div>
-      <label for="newPassword">New Password (min 6 characters):</label>
-      <input type="password" name="newPassword" id="newPassword" required>
-    </div>
-    <div>
-      <label for="newPassword2">Confirm New Password:</label>
-      <input type="password" name="newPassword2" id="newPassword2" required>
-    </div>
-    <button type="submit">Update Password</button>
-  </form>
 
+    <h2>Change Your Password</h2>
+    <form action="/users/profile" method="POST">
+      <div>
+        <label for="oldPassword">Current Password:</label>
+        <input type="password" name="oldPassword" id="oldPassword" required>
+      </div>
+      <div>
+        <label for="newPassword">New Password (min 6 characters):</label>
+        <input type="password" name="newPassword" id="newPassword" required>
+      </div>
+      <div>
+        <label for="newPassword2">Confirm New Password:</label>
+        <input type="password" name="newPassword2" id="newPassword2" required>
+      </div>
+      <button type="submit">Update Password</button>
+    </form>
+  </div>
+
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
 </body>
 </html>

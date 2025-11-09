@@ -1,5 +1,5 @@
 // --- Imports ---
-const path = require('path'); // CRITICAL NEW IMPORT for view lookup
+const path = require('path');
 require('dotenv').config(); 
 const express = require('express');
 const session = require('express-session'); 
@@ -12,14 +12,15 @@ const MongoStore = require('connect-mongo');
 require('./config/passport')(passport); 
 const { isAuthenticated } = require('./config/auth'); 
 
-// --- MODELS & CONTROLLERS (For stable startup) ---
+// --- MODELS (Required for Dashboard data) ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-// Load controllers here for stability
+
+// --- CONTROLLERS (Required for routes) ---
 const campaignsController = require('./controllers/campaignsController'); 
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
@@ -37,18 +38,12 @@ connectDB();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- CRITICAL FIX 1: Explicitly set views path for Vercel stability ---
+// --- CRITICAL FIX: Explicitly set views path for Vercel stability ---
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-// --- END CRITICAL FIX 1 ---
+// --- END CRITICAL FIX ---
 
-// --- CRITICAL FIX 2: Explicitly set STATIC path before SESSION middleware ---
-// This guarantees the logo loads instantly (publicly) before any security checks.
-app.use('/images', express.static(path.join(__dirname, 'public/images'))); 
-// --- END CRITICAL FIX 2 ---
-
-
-// --- SESSION & PASSPORT MIDDLEWARE ---
+// --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
   resave: false,
@@ -98,8 +93,7 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes (Restored to External Files) ---
-// Note: The failure is in the loading of the handler, but the structure is correct.
+// --- Protected App Routes ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 

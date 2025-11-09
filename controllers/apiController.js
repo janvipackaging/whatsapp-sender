@@ -274,4 +274,4 @@ async function updateCampaignStatus(statusUpdate) {
   } catch (error) {
     console.error("Error updating campaign status:", error);
   }
-}
+} 
