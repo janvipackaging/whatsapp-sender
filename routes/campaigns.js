@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const campaignsController = require('../controllers/campaignsController'); // <-- Controller is correctly imported
+const campaignsController = require('../controllers/campaignsController');
+const { isAuthenticated } = require('../config/auth'); // <-- CRITICAL IMPORT FOR HANDLERS
 
 // --- Define Routes ---
 
@@ -8,9 +9,10 @@ const campaignsController = require('../controllers/campaignsController'); // <-
 router.get('/', campaignsController.getCampaignPage);
 
 // @route   POST /campaigns/start
-router.post('/start', campaignsController.startCampaign); // <-- Crash is happening HERE
+// NOTE: We apply isAuthenticated here as well for stability, even though index.js applies it.
+router.post('/start', isAuthenticated, campaignsController.startCampaign); 
 
 // @route   POST /campaigns/test
-router.post('/test', campaignsController.sendTestMessage);
+router.post('/test', isAuthenticated, campaignsController.sendTestMessage);
 
 module.exports = router;

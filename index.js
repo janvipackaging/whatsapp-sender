@@ -21,6 +21,7 @@ const Segment = require('./models/Segment');
 const User = require('./models/User'); 
 
 // --- CONTROLLERS (Required for routes) ---
+// Note: We MUST still import these controllers so they are available when the routes file loads them
 const campaignsController = require('./controllers/campaignsController'); 
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
@@ -94,6 +95,7 @@ app.get('/', isAuthenticated, async (req, res) => {
 
 
 // --- Protected App Routes ---
+// This ensures Vercel loads the external files correctly.
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
