@@ -1,4 +1,5 @@
 // --- Imports ---
+const path = require('path'); // <-- 1. CRITICAL NEW IMPORT
 require('dotenv').config(); 
 const express = require('express');
 const session = require('express-session'); 
@@ -34,13 +35,14 @@ const PORT = process.env.PORT || 3000;
 connectDB(); 
 
 // --- Middleware ---
-app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
+app.use(express.static('public')); // Serve logo/static files
 
-// --- NEW LINE: Tell Express to serve static files (like logo) from the 'public' folder ---
-app.use(express.static('public'));
-// --- END OF NEW LINE ---
+// --- 2. CRITICAL FIX: Explicitly set views path for Vercel stability ---
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
+// --- END CRITICAL FIX ---
 
 // --- UPDATED SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
