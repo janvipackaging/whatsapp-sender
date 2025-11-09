@@ -1,5 +1,5 @@
 // --- Imports ---
-const path = require('path');
+const path = require('path'); // CRITICAL NEW IMPORT for view lookup
 require('dotenv').config(); 
 const express = require('express');
 const session = require('express-session'); 
@@ -19,6 +19,7 @@ const Message = require('./models/Message');
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
+// Load controllers here for stability
 const campaignsController = require('./controllers/campaignsController'); 
 const reportsController = require('./controllers/reportsController'); 
 const inboxController = require('./controllers/inboxController'); 
@@ -36,15 +37,16 @@ connectDB();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
-// --- CRITICAL FIX: STATIC ASSET HANDLER MOVED TO THE TOP ---
-// This ensures the logo loads instantly and publicly, before the session/passport middleware.
-app.use('/images', express.static(path.join(__dirname, 'public/images'))); 
-// --- END CRITICAL FIX ---
-
-
-// CRITICAL FIX: Explicitly set views path for Vercel stability
+// --- CRITICAL FIX 1: Explicitly set views path for Vercel stability ---
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
+// --- END CRITICAL FIX 1 ---
+
+// --- CRITICAL FIX 2: Explicitly set STATIC path before SESSION middleware ---
+// This guarantees the logo loads instantly (publicly) before any security checks.
+app.use('/images', express.static(path.join(__dirname, 'public/images'))); 
+// --- END CRITICAL FIX 2 ---
+
 
 // --- SESSION & PASSPORT MIDDLEWARE ---
 app.use(session({
@@ -56,7 +58,7 @@ app.use(session({
     collectionName: 'sessions'
   }),
   cookie: { 
-    maxAge: 1000 * 60 * 60 * 24 * 15 
+    maxAge: 1000 * 60 * 60 * 24 * 15 // 15 DAYS
   }
 }));
 
@@ -66,7 +68,6 @@ app.use(flash());
 
 
 // --- Routes ---
-// ... (The rest of the routes remain the same)
 
 // @route   GET /
 // @desc    Show the main "True Dashboard" (PROTECTED)
@@ -97,7 +98,8 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 
-// --- Protected App Routes ---
+// --- Protected App Routes (Restored to External Files) ---
+// Note: The failure is in the loading of the handler, but the structure is correct.
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
