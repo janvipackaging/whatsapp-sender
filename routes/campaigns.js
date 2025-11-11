@@ -1,22 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const campaignsController = require('../controllers/campaignsController');
 const { isAuthenticated } = require('../config/auth');
-const companiesController = require('../controllers/companiesController');
-const { isAdmin } = require('../config/auth'); // We will create this new security check
 
-// All routes in this file are protected and require Admin access
-router.use(isAuthenticated, isAdmin);
+// --- Define Routes ---
 
-// @route   GET /companies/
-// @desc    Show the main company management page
-router.get('/', companiesController.getCompaniesPage);
+// @route   GET /campaigns/
+// @desc    Show the "Create New Campaign" page
+router.get('/', campaignsController.getCampaignPage);
 
-// @route   POST /companies/add
-// @desc    Handle adding a new company
-router.post('/add', companiesController.addCompany);
+// @route   POST /campaigns/start
+// @desc    Start sending a new bulk message campaign
+router.post('/start', campaignsController.startCampaign);
 
-// @route   GET /companies/delete/:id
-// @desc    Handle deleting a company
-router.get('/delete/:id', companiesController.deleteCompany);
+// @route   POST /campaigns/test
+// @desc    Send a single test message for a campaign
+router.post('/test', campaignsController.sendTestMessage);
 
 module.exports = router;
