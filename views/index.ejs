@@ -77,12 +77,10 @@
     .btn-logout { background-color: #dc2626 !important; }
     .btn-logout:hover { background-color: #b91c1c !important; }
     
-    /* --- NEW ADMIN BUTTON STYLES --- */
     .btn-admin-user { background-color: #64748b !important; }
     .btn-admin-user:hover { background-color: #475569 !important; }
     .btn-admin-company { background-color: #34495e !important; }
     .btn-admin-company:hover { background-color: #2c3e50 !important; }
-    /* --- END NEW --- */
 
     /* Alert Box Styling */
     .alert {
@@ -254,8 +252,7 @@
     </a>
     <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
-      <a href="/campaigns">New Campaign</a>
-      <a href="/templates">Manage Templates</a>
+      <a href="/campaigns">New Campaign</a> <a href="/templates">Manage Templates</a>
       <a href="/segments">Manage Segments</a> 
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
@@ -362,7 +359,7 @@
               <span class="report-item-label">Delivered:</span>
               <span class="report-item-value"><%= lastCampaign.deliveredCount %></span>
             </div>
-            <div class="report-item">
+            <div class.report-item">
               <span class="report-item-label">Read:</span>
               <span class="report-item-value"><%= lastCampaign.readCount %></span>
             </div>
