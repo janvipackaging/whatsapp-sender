@@ -54,6 +54,7 @@ app.use(flash());
 
 // --- [FIX] GLOBAL VARIABLES MIDDLEWARE ---
 // This prevents "user is not defined" errors on all pages
+// And handles flash messages globally to avoid race conditions
 app.use((req, res, next) => {
   res.locals.user = req.user || null;
   res.locals.success_msg = req.flash('success_msg');
@@ -82,7 +83,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
       lastCampaign, companies, segments, pendingUsers
-      // user is now handled by global middleware
+      // user, success_msg, etc. are now handled by global middleware
     });
 
   } catch (error) {

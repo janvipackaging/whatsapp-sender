@@ -19,9 +19,9 @@ exports.getCampaignPage = async (req, res) => {
     const segments = await Segment.find();
     const templates = await Template.find(); 
 
-    // --- FIX IS HERE ---
-    // We REMOVED success_msg/error_msg from here.
-    // The index.js Global Middleware now handles them automatically.
+    // FIX: Removed explicit req.flash calls here.
+    // The Global Middleware in index.js now handles success_msg/error_msg
+    // to prevent them from being consumed twice (which causes silent failures).
     res.render('campaigns', {
       user: req.user,
       companies: companies,
@@ -153,7 +153,7 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     
     const whatsappTemplateName = template.codeName || template.templateName;
 
@@ -173,7 +173,13 @@ exports.sendTestMessage = async (req, res) => {
         if (includeVars) {
             payload.template.components.push({
                 type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
+                parameters: [
+                    {
+                        type: "text",
+                        text: "Valued Customer",
+                        parameter_name: "customer_name" // Ensure compatibility with strict templates
+                    }
+                ]
             });
         }
 
@@ -188,21 +194,20 @@ exports.sendTestMessage = async (req, res) => {
     }
 
     // --- ATTEMPT 1: Standard (en_US + WITH Variable) ---
-    // Start by assuming the template HAS a variable.
     let result = await trySending("en_US", true);
 
     // --- ERROR HANDLING & RETRY LOGIC ---
     if (result.error) {
         console.log(`Attempt 1 Failed: Code ${result.error.code} - ${result.error.message}`);
 
-        // Error #100: Invalid Parameter (Means we sent vars, but template wants none)
-        // Error #132000: Number of params does not match (Means we sent 1, template wants 0)
+        // Error #100: Invalid Parameter 
+        // Error #132000: Number of params does not match (Means template wants 0 vars)
         if (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter')) {
             console.log("Param Mismatch Detected. Retrying WITHOUT variables...");
             result = await trySending("en_US", false);
         }
         
-        // Error #132001: Language mismatch (Template might be 'en', not 'en_US')
+        // Error #132001: Language mismatch
         else if (result.error.code === 132001 || result.error.message.includes('does not exist')) {
             console.log("Language Mismatch Detected. Retrying with 'en' + Vars...");
             result = await trySending("en", true);
