@@ -10,22 +10,15 @@ const MongoStore = require('connect-mongo');
 
 // --- Configs ---
 require('./config/passport')(passport); 
-const { isAuthenticated, isAdmin } = require('./config/auth'); // <-- 1. IMPORT isAdmin
+const { isAuthenticated, isAdmin } = require('./config/auth'); 
 
-// --- MODELS (Required for Dashboard data) ---
+// --- MODELS ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
 const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
-
-// --- CONTROLLERS (Required for routes) ---
-const campaignsController = require('./controllers/campaignsController'); 
-const reportsController = require('./controllers/reportsController'); 
-const inboxController = require('./controllers/inboxController'); 
-const blocklistController = require('./controllers/blocklistController'); 
-
 
 // --- Initialization ---
 const app = express();
@@ -59,6 +52,16 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
+// --- [FIX] GLOBAL VARIABLES MIDDLEWARE ---
+// This prevents "user is not defined" errors on all pages
+app.use((req, res, next) => {
+  res.locals.user = req.user || null;
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  next();
+});
+// -----------------------------------------
 
 // --- Routes ---
 
@@ -78,10 +81,8 @@ app.get('/', isAuthenticated, async (req, res) => {
 
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
-      lastCampaign, companies, segments, pendingUsers,
-      user: req.user, 
-      success_msg: req.flash('success_msg'),
-      error_msg: req.flash('error_msg')
+      lastCampaign, companies, segments, pendingUsers
+      // user is now handled by global middleware
     });
 
   } catch (error) {
@@ -100,10 +101,8 @@ app.use('/inbox', isAuthenticated, require('./routes/inbox'));
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
 app.use('/segments', isAuthenticated, require('./routes/segments'));
 
-// --- 2. ADD THIS NEW ADMIN-ONLY ROUTE ---
-// We use 'isAuthenticated' AND 'isAdmin' to protect it
+// --- ADMIN-ONLY ROUTE ---
 app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
-// --- END OF NEW ROUTE ---
 
 // --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 
