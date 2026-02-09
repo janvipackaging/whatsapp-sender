@@ -56,7 +56,6 @@ exports.startCampaign = async (req, res) => {
       return res.redirect('/campaigns');
     }
     
-    // Support both naming conventions for safety
     const templateName = template.codeName || template.templateName || template.name; 
 
     const segmentContacts = await Contact.find({
@@ -69,7 +68,7 @@ exports.startCampaign = async (req, res) => {
        return res.redirect('/campaigns');
     }
     
-    // --- BLOCKLIST CHECK LOGIC ---
+    // --- BLOCKLIST CHECK ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
     
@@ -88,7 +87,6 @@ exports.startCampaign = async (req, res) => {
       req.flash('error_msg', 'Campaign Blocked: All contacts are in the blocklist.');
       return res.redirect('/campaigns');
     }
-    // --- END BLOCKLIST CHECK ---
 
     const newCampaign = new Campaign({
       name: name || template.name, 
@@ -101,8 +99,6 @@ exports.startCampaign = async (req, res) => {
     await newCampaign.save();
 
     const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
-
-    // Handle Token/ID field names safely (Support both versions)
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
 
@@ -115,7 +111,7 @@ exports.startCampaign = async (req, res) => {
         companyToken: token,
         companyNumberId: phoneId,
         campaignId: newCampaign._id,
-        variableValue: contact.name || 'Customer' // Pass name for variables
+        variableValue: contact.name || 'Customer' 
       };
 
       await qstashClient.publishJSON({
@@ -137,11 +133,10 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// @desc    Send a single test message
+// --- SMART TEST MESSAGE (AUTO-RETRY) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
-    // Handle form naming differences (phone vs testPhone)
     const targetPhone = phone || req.body.testPhone;
 
     if (!companyId || !templateId || !targetPhone) {
@@ -152,83 +147,69 @@ exports.sendTestMessage = async (req, res) => {
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
 
-    if (!company) {
-        req.flash('error_msg', 'Company not found.');
-        return res.redirect('/campaigns');
-    }
-    if (!template) {
-        req.flash('error_msg', 'Template not found.');
-        return res.redirect('/campaigns');
-    }
+    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
+    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
 
-    // Handle Token/ID field names safely
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
     const whatsappTemplateName = template.codeName || template.templateName;
 
-    // Construct Payload
-    const messageData = {
-      messaging_product: "whatsapp",
-      to: targetPhone, 
-      type: "template",
-      template: {
-        name: whatsappTemplateName,
-        language: { code: "en_US" }, // FORCE US ENGLISH
-        components: []
-      }
-    };
+    // Helper Function: Try sending with specific settings
+    async function trySending(langCode, includeVars) {
+        const payload = {
+            messaging_product: "whatsapp",
+            to: targetPhone, 
+            type: "template",
+            template: {
+                name: whatsappTemplateName,
+                language: { code: langCode },
+                components: []
+            }
+        };
 
-    // --- FIX FOR #100 ERROR (INVALID PARAMETER) ---
-    // We check if the template NEEDS a variable.
-    // 1. Check if 'variable1' is set in DB.
-    // 2. OR Check if 'variables' array is set in DB.
-    // 3. OR (Crucial Fix) Check if the name contains "calculator", assume it needs one.
-    
-    let needsVariable = false;
-    if (template.variable1) needsVariable = true;
-    if (template.variables && template.variables.length > 0) needsVariable = true;
-    if (whatsappTemplateName && whatsappTemplateName.toLowerCase().includes('calculator')) needsVariable = true;
+        if (includeVars) {
+            payload.template.components.push({
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            });
+        }
 
-    if (needsVariable) {
-        messageData.template.components.push({
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                text: "Valued Customer" // Dummy data for test
-              }
-            ]
+        console.log(`[Test] Attempting: Lang=${langCode}, Vars=${includeVars}`);
+        
+        const response = await fetch(WHATSAPP_API_URL, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+        return await response.json();
     }
 
-    // Log the exact payload for debugging
-    console.log("Sending Test Payload:", JSON.stringify(messageData, null, 2));
+    // --- ATTEMPT 1: Standard (en_US + WITH Variable) ---
+    let result = await trySending("en_US", true);
 
-    const response = await fetch(WHATSAPP_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(messageData)
-    });
+    // --- ATTEMPT 2: If Error #100 (Param Mismatch) -> Try WITHOUT Variables ---
+    if (result.error && (result.error.code === 100 || result.error.message.includes('parameter'))) {
+        console.log("Error #100 detected. Retrying WITHOUT variables...");
+        result = await trySending("en_US", false);
+    }
 
-    const result = await response.json();
+    // --- ATTEMPT 3: If Error #132001 (Lang Mismatch) -> Try 'en' + WITH Variable ---
+    if (result.error && (result.error.code === 132001 || result.error.message.includes('does not exist'))) {
+        console.log("Error #132001 detected. Retrying with 'en' language...");
+        result = await trySending("en", true);
+        
+        // --- ATTEMPT 4: If 'en' fails -> Try 'en' + WITHOUT Variable
+        if (result.error) {
+             result = await trySending("en", false);
+        }
+    }
 
-    if (!response.ok) {
-      console.error('Test Message Error:', JSON.stringify(result, null, 2));
-      const errorMsg = result.error ? result.error.message : 'Unknown Meta API Error';
-      
-      if (errorMsg.includes('Invalid parameter')) {
-          req.flash('error_msg', 'Meta Error (#100): Template variable mismatch. The App sent 0 or wrong variables, but WhatsApp expected 1.');
-      } else if (errorMsg.includes('does not exist')) {
-          req.flash('error_msg', 'Meta Error (#132001): Template name or language mismatch. Ensure it is "en_US" in Meta.');
-      } else {
-          req.flash('error_msg', `Meta Error: ${errorMsg}`);
-      }
+    // --- FINAL RESULT HANDLING ---
+    if (result.error) {
+      console.error('Final Test Failure:', JSON.stringify(result.error, null, 2));
+      req.flash('error_msg', `Meta Error (${result.error.code}): ${result.error.message}`);
       return res.redirect('/campaigns');
     }
 
