@@ -19,13 +19,14 @@ exports.getCampaignPage = async (req, res) => {
     const segments = await Segment.find();
     const templates = await Template.find(); 
 
+    // --- FIX IS HERE ---
+    // We REMOVED success_msg/error_msg from here.
+    // The index.js Global Middleware now handles them automatically.
     res.render('campaigns', {
       user: req.user,
       companies: companies,
       segments: segments,
-      templates: templates,
-      success_msg: req.flash('success_msg'),
-      error_msg: req.flash('error_msg')
+      templates: templates
     });
 
   } catch (error) {
@@ -187,22 +188,30 @@ exports.sendTestMessage = async (req, res) => {
     }
 
     // --- ATTEMPT 1: Standard (en_US + WITH Variable) ---
+    // Start by assuming the template HAS a variable.
     let result = await trySending("en_US", true);
 
-    // --- ATTEMPT 2: If Error #100 (Param Mismatch) -> Try WITHOUT Variables ---
-    if (result.error && (result.error.code === 100 || result.error.message.includes('parameter'))) {
-        console.log("Error #100 detected. Retrying WITHOUT variables...");
-        result = await trySending("en_US", false);
-    }
+    // --- ERROR HANDLING & RETRY LOGIC ---
+    if (result.error) {
+        console.log(`Attempt 1 Failed: Code ${result.error.code} - ${result.error.message}`);
 
-    // --- ATTEMPT 3: If Error #132001 (Lang Mismatch) -> Try 'en' + WITH Variable ---
-    if (result.error && (result.error.code === 132001 || result.error.message.includes('does not exist'))) {
-        console.log("Error #132001 detected. Retrying with 'en' language...");
-        result = await trySending("en", true);
+        // Error #100: Invalid Parameter (Means we sent vars, but template wants none)
+        // Error #132000: Number of params does not match (Means we sent 1, template wants 0)
+        if (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter')) {
+            console.log("Param Mismatch Detected. Retrying WITHOUT variables...");
+            result = await trySending("en_US", false);
+        }
         
-        // --- ATTEMPT 4: If 'en' fails -> Try 'en' + WITHOUT Variable
-        if (result.error) {
-             result = await trySending("en", false);
+        // Error #132001: Language mismatch (Template might be 'en', not 'en_US')
+        else if (result.error.code === 132001 || result.error.message.includes('does not exist')) {
+            console.log("Language Mismatch Detected. Retrying with 'en' + Vars...");
+            result = await trySending("en", true);
+            
+            // If that fails, try 'en' + No Vars
+            if (result.error) {
+                 console.log("Retrying 'en' WITHOUT variables...");
+                 result = await trySending("en", false);
+            }
         }
     }
 
