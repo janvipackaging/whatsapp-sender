@@ -167,22 +167,32 @@ exports.sendTestMessage = async (req, res) => {
 
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
+    const whatsappTemplateName = template.codeName || template.templateName;
+
     // Construct Payload
     const messageData = {
       messaging_product: "whatsapp",
       to: targetPhone, 
       type: "template",
       template: {
-        name: template.codeName || template.templateName, // Use the correct WhatsApp name
+        name: whatsappTemplateName,
         language: { code: "en_US" }, // FORCE US ENGLISH
         components: []
       }
     };
 
-    // --- CONDITIONAL VARIABLE INJECTION (FIX FOR #100 ERROR) ---
-    // Only add the variable component if the template actually needs it.
-    // We check if 'variable1' exists or 'variables' is not empty.
-    if (template.variable1 || (template.variables && template.variables.length > 0)) {
+    // --- FIX FOR #100 ERROR (INVALID PARAMETER) ---
+    // We check if the template NEEDS a variable.
+    // 1. Check if 'variable1' is set in DB.
+    // 2. OR Check if 'variables' array is set in DB.
+    // 3. OR (Crucial Fix) Check if the name contains "calculator", assume it needs one.
+    
+    let needsVariable = false;
+    if (template.variable1) needsVariable = true;
+    if (template.variables && template.variables.length > 0) needsVariable = true;
+    if (whatsappTemplateName && whatsappTemplateName.toLowerCase().includes('calculator')) needsVariable = true;
+
+    if (needsVariable) {
         messageData.template.components.push({
             type: "body",
             parameters: [
@@ -193,6 +203,9 @@ exports.sendTestMessage = async (req, res) => {
             ]
         });
     }
+
+    // Log the exact payload for debugging
+    console.log("Sending Test Payload:", JSON.stringify(messageData, null, 2));
 
     const response = await fetch(WHATSAPP_API_URL, {
       method: 'POST',
@@ -209,11 +222,10 @@ exports.sendTestMessage = async (req, res) => {
       console.error('Test Message Error:', JSON.stringify(result, null, 2));
       const errorMsg = result.error ? result.error.message : 'Unknown Meta API Error';
       
-      // Send helpful error to user
       if (errorMsg.includes('Invalid parameter')) {
-          req.flash('error_msg', 'Meta Error: Template variable mismatch. Check if your template needs a variable.');
+          req.flash('error_msg', 'Meta Error (#100): Template variable mismatch. The App sent 0 or wrong variables, but WhatsApp expected 1.');
       } else if (errorMsg.includes('does not exist')) {
-          req.flash('error_msg', 'Meta Error: Template name or language mismatch. Ensure it is "en_US".');
+          req.flash('error_msg', 'Meta Error (#132001): Template name or language mismatch. Ensure it is "en_US" in Meta.');
       } else {
           req.flash('error_msg', `Meta Error: ${errorMsg}`);
       }
