@@ -10,19 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* Global Styles */
-    body { 
-      font-family: 'Inter', sans-serif; 
-      margin: 0; 
-      background-color: #f0f2f5; 
-      color: #333;
-    }
-    .container {
-      padding: 30px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
-    h1, h2 { color: #1e3a8a; margin-top: 0; }
+    body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+    .container { max-width: 1300px; margin: 0 auto; padding: 30px; }
+    h1 { color: #1e3a8a; margin-top: 0; }
+    h2 { margin-top: 0; font-size: 1.2em; color: #333; }
     
     /* Navigation (Header) */
     nav { 
@@ -44,61 +35,85 @@
       text-decoration: none;
     }
     .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
+      height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
     }
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
     nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      font-weight: 500;
+      padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
-    .nav-right { margin-left: auto; } 
+    .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
-    /* --- NEW: Content Wrapper --- */
-    .content-wrapper {
-      max-width: 900px; /* This controls the width */
-      margin: 0 auto;  /* This centers it */
-    }
-    /* --- END NEW --- */
-
-    /* Alert Box Styling */
+    /* Admin Buttons CSS */
+    .btn-admin-user { background-color: #64748b !important; }
+    .btn-admin-user:hover { background-color: #475569 !important; }
+    .btn-admin-company { background-color: #34495e !important; }
+    .btn-admin-company:hover { background-color: #2c3e50 !important; }
+    
+    /* Alerts */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
-    /* Table Styling */
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      background: #fff; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-      border-radius: 8px; 
-      margin-top: 20px; 
+    /* Layout Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr; /* Form on Left, Table on Right */
+      gap: 30px;
     }
-    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #f4f7f6; }
-    tr:last-child td { border-bottom: none; }
-    .btn-toggle { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-weight: 600; color: white; }
-    .btn-disable { background-color: #dc3545; }
-    .btn-disable:hover { background-color: #c82333; }
-    .btn-enable { background-color: #28a745; }
-    .btn-enable:hover { background-color: #218838; }
+
+    /* Widgets */
+    .widget { background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     
-    /* Footer Style */
+    form div { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    input[type="text"], input[type="email"], input[type="password"], select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box; 
+      font-size: 1em;
+    }
+    button { 
+      padding: 12px 20px; 
+      color: white; 
+      border-radius: 5px; 
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+      width: 100%;
+      font-weight: 700;
+      transition: background-color 0.2s;
+    }
+    .btn-blue { background-color: #3b82f6; }
+    .btn-blue:hover { background-color: #2563eb; }
+
+    /* Table */
+    .table-widget { background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f4f7f6; font-weight: 600; }
+    
+    /* Status & Badges */
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600; text-transform: uppercase; }
+    .badge-admin { background-color: #d1fae5; color: #065f46; }
+    .badge-user { background-color: #e0f2fe; color: #075985; }
+    .status-enabled { color: #16a34a; font-weight: 600; }
+    .status-disabled { color: #dc2626; font-weight: 600; }
+
+    /* Toggle Buttons */
+    .btn-toggle { 
+      padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.9em; margin-right: 5px; color: white; display: inline-block; font-weight: 600;
+    }
+    .btn-disable { background-color: #f59e0b; } /* Orange for Disable */
+    .btn-disable:hover { background-color: #d97706; }
+    .btn-enable { background-color: #22c55e; } /* Green for Enable */
+    .btn-enable:hover { background-color: #16a34a; }
+
+    /* Footer */
     footer {
       background-color: #1e3a8a;
       color: #ccc;
@@ -107,19 +122,18 @@
       margin-top: 30px;
       font-size: 0.85em;
     }
-    
-    /* Responsive */
-    @media (max-width: 950px) {
-      .content-wrapper { max-width: 95%; } 
+
+    @media (max-width: 1000px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-links { width: 100%; }
+       .nav-right { margin-left: 0; }
     }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      table, thead, tbody, th, td, tr { display: block; }
-      thead tr { position: absolute; top: -9999px; left: -9999px; }
-      tr { border: 1px solid #ccc; margin-bottom: 15px; }
-      td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
-      td:before { content: attr(data-label); position: absolute; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; text-align: left; }
     }
   </style>
 </head>
@@ -130,7 +144,7 @@
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
         Janvi Sender App
     </a>
-    <div>
+    <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
@@ -138,60 +152,126 @@
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      
+      <!-- Admin-Only Buttons -->
+      <% if (user && user.role === 'admin') { %>
+        <a href="/users/manage" class="btn-admin-user">Manage Users</a>
+        <a href="/companies" class="btn-admin-company">Manage Companies</a>
+      <% } %>
     </div>
     <div class="nav-right">
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
       <a href="/users/profile" class="btn-profile">Your Profile</a>
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
   </nav>
-  <div class="container">
-    <div class="content-wrapper">
-      <h1>Manage Users</h1>
-      
-      <% if (success_msg && success_msg.length > 0) { %>
-        <div class="alert alert-success"><%= success_msg %></div>
-      <% } %>
-      <% if (error_msg && error_msg.length > 0) { %>
-        <div class="alert alert-error"><%= error_msg %></div>
-      <% } %>
 
-      <h2>Approved Users</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% users.forEach(function(user) { %>
+  <div class="container">
+    <h1>Manage Users</h1>
+
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success"><%= success_msg %></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error"><%= error_msg %></div>
+    <% } %>
+
+    <div class="content-grid">
+      
+      <!-- ADD USER FORM (New Feature) -->
+      <div class="widget">
+        <h2>Add New User</h2>
+        <form action="/users/add" method="POST">
+          <div>
+            <label for="username">Username:</label>
+            <input type="text" name="username" id="username" placeholder="e.g., john_doe" required>
+          </div>
+
+          <div>
+            <label for="email">Email Address:</label>
+            <input type="email" name="email" id="email" placeholder="e.g., john@example.com" required>
+          </div>
+
+          <div>
+            <label for="password">Initial Password:</label>
+            <input type="password" name="password" id="password" required>
+          </div>
+
+          <div>
+            <label for="companyId">Assign Company:</label>
+            <select name="companyId" id="companyId" required>
+              <option value="">-- Select Company --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div>
+            <label for="role">Role:</label>
+            <select name="role" id="role" required>
+              <option value="user">User (Standard)</option>
+              <option value="admin">Admin (Full Access)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-blue">Create User</button>
+        </form>
+      </div>
+
+      <!-- USER LIST (Your Existing Data with New Style) -->
+      <div class="table-widget">
+        <h2>System Users</h2>
+        <table>
+          <thead>
             <tr>
-              <td data-label="Username"><%= user.username %></td>
-              <td data-label="Company"><%= user.company ? user.company.name : 'N/A' %></td>
-              <td data-label="Role"><%= user.role.toUpperCase() %></td>
-              <td data-label="Status">
-                <% if (user.isApproved) { %>
-                  <span style="color: green; font-weight: 600;">Enabled</span>
-                <% } else { %>
-                  <span style="color: red; font-weight: 600;">Disabled</span>
-                <% } %>
-              </td>
-              <td data-label="Action">
-                <% if (user.isApproved) { %>
-                  <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-disable" onclick="return confirm('Are you sure you want to DISABLE access for <%= user.username %>?');">Disable</a>
-                <% } else { %>
-                  <a href="/users/toggle/<%= user._id %>" class="btn-toggle btn-enable">Enable</a>
-                <% } %>
-              </td>
+              <th>Username</th>
+              <th>Company</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    </div> </div>
+          </thead>
+          <tbody>
+            <% users.forEach(function(u) { %>
+              <tr>
+                <td><%= u.username %></td>
+                <td><%= u.company ? u.company.name : 'N/A' %></td>
+                <td>
+                  <span class="badge badge-<%= u.role %>"><%= u.role %></span>
+                </td>
+                <td>
+                  <% if (u.isApproved) { %>
+                    <span class="status-enabled">Active</span>
+                  <% } else { %>
+                    <span class="status-disabled">Disabled</span>
+                  <% } %>
+                </td>
+                <td>
+                  <!-- Self-Protection Check -->
+                  <% if (u._id.toString() !== user._id.toString()) { %>
+                    <% if (u.isApproved) { %>
+                      <a href="/users/toggle/<%= u._id %>" class="btn-toggle btn-disable" onclick="return confirm('Disable access for <%= u.username %>?');">Disable</a>
+                    <% } else { %>
+                      <a href="/users/toggle/<%= u._id %>" class="btn-toggle btn-enable">Enable</a>
+                    <% } %>
+                  <% } else { %>
+                    <span style="color: #999; font-size: 0.9em; font-style: italic;">(You)</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+
+            <% if (users.length === 0) { %>
+              <tr>
+                <td colspan="5" style="text-align: center; color: #666;">No users found.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 
   <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.

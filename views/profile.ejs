@@ -1,163 +1,157 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Profile - Janvi Sender App</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    /* Global Styles */
-    body { 
-      font-family: 'Inter', sans-serif; 
-      margin: 0; 
-      background-color: #f0f2f5; 
-      color: #333;
-    }
-    .container {
-      padding: 30px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
-    h1, h2 { color: #1e3a8a; margin-top: 0; }
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Profile</title>
     
-    /* Navigation (Header) */
-    nav { 
-      background-color: #1e3a8a; 
-      padding: 15px 30px;
-      margin-bottom: 30px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .brand-logo-container {
-      display: flex;
-      align-items: center;
-      margin-right: 30px;
-      color: white;
-      font-size: 1.4em;
-      font-weight: 700;
-      text-decoration: none;
-    }
-    .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
-    }
-    nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      font-weight: 500;
-    }
-    nav a:hover { background-color: #3730a3; }
-    .nav-right { margin-left: auto; } 
-    .btn-profile { background-color: #64748b !important; }
-    .btn-logout { background-color: #dc2626 !important; }
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
-    /* --- NEW: Content Wrapper --- */
-    .content-wrapper {
-      max-width: 900px; /* This controls the width */
-      margin: 0 auto;  /* This centers it */
-    }
-    /* --- END NEW --- */
+    <style>
+      body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+      .container { max-width: 1100px; margin: 0 auto; padding: 30px; }
+      h1 { color: #1e3a8a; margin-top: 0; }
+      h2 { margin-top: 0; font-size: 1.2em; color: #333; margin-bottom: 20px; }
+      
+      /* Navigation (Header) */
+      nav { 
+        background-color: #1e3a8a; 
+        padding: 15px 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .brand-logo-container {
+        display: flex;
+        align-items: center;
+        margin-right: 30px;
+        color: white;
+        font-size: 1.4em;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .logo-img {
+        height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
+      }
+      .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
+      nav a { 
+        padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
+      }
+      nav a:hover { background-color: #3730a3; }
+      .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
+      .btn-profile { background-color: #64748b !important; }
+      .btn-logout { background-color: #dc2626 !important; }
+      
+      /* Admin Buttons CSS */
+      .btn-admin-user { background-color: #64748b !important; }
+      .btn-admin-user:hover { background-color: #475569 !important; }
+      .btn-admin-company { background-color: #34495e !important; }
+      .btn-admin-company:hover { background-color: #2c3e50 !important; }
+      
+      /* Alerts */
+      .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
+      .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+      .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
-    /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 500px; margin-left: auto; margin-right: auto; }
-    .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-    .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+      /* Layout Grid */
+      .profile-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+      }
 
-    /* Form Styling */
-    form { 
-      background: #fff; 
-      border-radius: 8px; 
-      padding: 25px; 
-      max-width: 500px; /* <--- FIXED WIDTH */
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-      margin-bottom: 30px; 
-      margin-left: auto; 
-      margin-right: auto;
-    }
-    div { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-    input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      box-sizing: border-box; 
-    }
-    button { 
-      padding: 12px 20px; 
-      background-color: #007bff; 
-      color: white; 
-      border-radius: 5px; 
-      border: none;
-      font-size: 1em;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    button:hover { background-color: #0056b3; }
-    .user-info { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee; max-width: 500px; margin-left: auto; margin-right: auto; }
+      /* Widgets */
+      .widget { background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+      
+      /* Info Styles */
+      .profile-info-item { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+      .profile-info-item:last-child { border: none; }
+      .profile-label { display: block; font-weight: 600; color: #666; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; }
+      .profile-value { font-size: 1.1em; color: #333; font-weight: 500; }
+      
+      /* Form Styles */
+      form div { margin-bottom: 20px; }
+      label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+      input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-sizing: border-box; 
+        font-size: 1em;
+      }
+      button { 
+        padding: 12px 20px; 
+        background-color: #007bff;
+        color: white; 
+        border-radius: 5px; 
+        border: none;
+        font-size: 1em;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 700;
+        transition: background-color 0.2s;
+      }
+      button:hover { background-color: #0056b3; }
 
-    /* Footer Style */
-    footer {
-      background-color: #1e3a8a;
-      color: #ccc;
-      text-align: center;
-      padding: 15px 0;
-      margin-top: 30px;
-      font-size: 0.85em;
-    }
-     /* Responsive */
-    @media (max-width: 950px) {
-      .content-wrapper { max-width: 95%; } 
-    }
-    @media (max-width: 600px) {
-      .container { padding: 15px; }
-      nav { padding: 10px 15px; }
-      form, .user-info { max-width: 100%; }
-    }
-  </style>
-</head>
-<body>
-  
-  <nav>
-    <a href="/" class="brand-logo-container">
-        <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
-        Janvi Sender App
-    </a>
-    <div>
-      <a href="/contacts">Manage Contacts</a>
-      <a href="/campaigns">New Campaign</a>
-      <a href="/templates">Manage Templates</a>
-      <a href="/segments">Manage Segments</a>
-      <a href="/reports">Campaign Reports</a>
-      <a href="/inbox">View Inbox</a>
-      <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
-    </div>
-    <div class="nav-right">
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
-      <a href="/users/profile" class="btn-profile">Your Profile</a>
-      <a href="/users/logout" class="btn-logout">Log Out</a>
-    </div>
-  </nav>
-  <div class="container">
-    <div class="content-wrapper">
-      <h1>Your Profile</h1>
+      /* Footer */
+      footer {
+        background-color: #1e3a8a;
+        color: #ccc;
+        text-align: center;
+        padding: 15px 0;
+        margin-top: 30px;
+        font-size: 0.85em;
+      }
+
+      @media (max-width: 800px) {
+        .profile-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 768px) {
+        nav { flex-direction: column; align-items: flex-start; }
+        .nav-links { width: 100%; }
+        .nav-right { margin-left: 0; }
+      }
+      @media (max-width: 600px) {
+        .container { padding: 15px; }
+        nav { padding: 10px 15px; }
+      }
+    </style>
+  </head>
+  <body>
+    
+    <nav>
+      <a href="/" class="brand-logo-container">
+          <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
+          Janvi Sender App
+      </a>
+      <div class="nav-links">
+        <a href="/contacts">Manage Contacts</a>
+        <a href="/campaigns">New Campaign</a>
+        <a href="/templates">Manage Templates</a>
+        <a href="/segments">Manage Segments</a>
+        <a href="/reports">Campaign Reports</a>
+        <a href="/inbox">View Inbox</a>
+        <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+        
+        <!-- Admin-Only Buttons -->
+        <% if (user && user.role === 'admin') { %>
+          <a href="/users/manage" class="btn-admin-user">Manage Users</a>
+          <a href="/companies" class="btn-admin-company">Manage Companies</a>
+        <% } %>
+      </div>
+      <div class="nav-right">
+        <a href="/users/profile" class="btn-profile">Your Profile</a>
+        <a href="/users/logout" class="btn-logout">Log Out</a>
+      </div>
+    </nav>
+
+    <div class="container">
+      <h1>Account Profile</h1>
 
       <% if (success_msg && success_msg.length > 0) { %>
         <div class="alert alert-success"><%= success_msg %></div>
@@ -166,32 +160,67 @@
         <div class="alert alert-error"><%= error_msg %></div>
       <% } %>
 
-      <div class="user-info">
-        <p><strong>Username:</strong> <%= user.username %></p>
-        <p><strong>Role:</strong> <%= user.role.toUpperCase() %></p>
-        <p><strong>Company ID:</strong> <%= user.company %></p>
+      <div class="profile-grid">
+        
+        <!-- User Details Card -->
+        <div class="widget">
+          <h2>👤 User Details</h2>
+          
+          <div class="profile-info-item">
+            <span class="profile-label">Username</span>
+            <span class="profile-value"><%= user.username %></span>
+          </div>
+
+          <div class="profile-info-item">
+            <span class="profile-label">Email Address</span>
+            <span class="profile-value"><%= user.email || 'Not provided' %></span>
+          </div>
+
+          <div class="profile-info-item">
+            <span class="profile-label">Role</span>
+            <span class="profile-value" style="text-transform: capitalize;">
+              <% if(user.role === 'admin') { %>
+                <span style="background-color: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 0.9em;">Admin</span>
+              <% } else { %>
+                <span style="background-color: #e0f2fe; color: #075985; padding: 2px 8px; border-radius: 4px; font-size: 0.9em;">User</span>
+              <% } %>
+            </span>
+          </div>
+
+          <div class="profile-info-item">
+            <span class="profile-label">Associated Company</span>
+            <span class="profile-value"><%= user.company ? user.company.name : 'N/A' %></span>
+          </div>
+        </div>
+
+        <!-- Change Password Card -->
+        <div class="widget">
+          <h2>🔒 Change Password</h2>
+          <form action="/users/profile" method="POST">
+            <div>
+              <label for="oldPassword">Current Password:</label>
+              <input type="password" name="oldPassword" id="oldPassword" required>
+            </div>
+            
+            <div>
+              <label for="newPassword">New Password:</label>
+              <input type="password" name="newPassword" id="newPassword" required>
+            </div>
+
+            <div>
+              <label for="newPassword2">Confirm New Password:</label>
+              <input type="password" name="newPassword2" id="newPassword2" required>
+            </div>
+
+            <button type="submit">Update Password</button>
+          </form>
+        </div>
+
       </div>
+    </div>
 
-      <h2>Change Your Password</h2>
-      <form action="/users/profile" method="POST">
-        <div>
-          <label for="oldPassword">Current Password:</label>
-          <input type="password" name="oldPassword" id="oldPassword" required>
-        </div>
-        <div>
-          <label for="newPassword">New Password (min 6 characters):</label>
-          <input type="password" name="newPassword" id="newPassword" required>
-        </div>
-        <div>
-          <label for="newPassword2">Confirm New Password:</label>
-          <input type="password" name="newPassword2" id="newPassword2" required>
-        </div>
-        <button type="submit">Update Password</button>
-      </form>
-    </div> </div>
-
-  <footer>
-    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
-  </footer>
-</body>
-</html>
+    <footer>
+      &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+    </footer>
+  </body>
+  </html>

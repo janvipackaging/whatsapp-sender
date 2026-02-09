@@ -5,22 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>New Campaign</title>
   
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    /* Global Styles */
-    body { 
-      font-family: 'Inter', sans-serif; 
-      margin: 0; 
-      background-color: #f0f2f5; 
-      color: #333;
-    }
-    .container {
-      padding: 30px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
+    body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+    .container { max-width: 1300px; margin: 0 auto; padding: 30px; }
     h1 { color: #1e3a8a; margin-top: 0; }
+    h2 { margin-top: 0; font-size: 1.2em; color: #333; margin-bottom: 20px; }
     
-    /* Navigation */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -38,48 +33,34 @@
       font-size: 1.4em;
       font-weight: 700;
       text-decoration: none;
-      transition: opacity 0.2s;
     }
-    .brand-logo-container:hover { opacity: 0.9; }
     .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
+      height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
     }
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
     nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      transition: background-color 0.2s;
-      font-weight: 500;
+      padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
     .nav-right { margin-left: auto; } 
     .btn-profile { background-color: #64748b !important; }
-    .btn-profile:hover { background-color: #475569 !important; }
     .btn-logout { background-color: #dc2626 !important; }
-    .btn-logout:hover { background-color: #b91c1c !important; }
     
-    /* Form Styling */
-    form { 
-      background: #fff; 
-      border-radius: 8px; 
-      padding: 25px; 
-      max-width: 500px; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-      margin-bottom: 30px; 
-      margin-left: auto; 
-      margin-right: auto;
+    /* Alerts */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
+    .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+
+    /* Layout Grid */
+    .campaign-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr; /* Main Form (Left) vs Test Form (Right) */
+      gap: 30px;
     }
+
+    /* Widgets */
+    .widget { background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    
     form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="tel"], select {
@@ -92,27 +73,41 @@
     }
     button { 
       padding: 12px 20px; 
-      text-decoration: none; 
       color: white; 
       border-radius: 5px; 
       border: none;
       font-size: 1em;
       cursor: pointer;
       width: 100%;
-      font-weight: 600;
+      font-weight: 700;
       transition: background-color 0.2s;
     }
-    .btn-blue { background-color: #007bff; }
-    .btn-blue:hover { background-color: #0056b3; }
-    .btn-green { background-color: #28a745; }
-    .btn-green:hover { background-color: #218838; }
-    hr { border: 0; border-top: 1px solid #eee; margin: 40px 0; }
+    .btn-green { background-color: #22c55e; }
+    .btn-green:hover { background-color: #16a34a; }
+    
+    .btn-blue { background-color: #3b82f6; }
+    .btn-blue:hover { background-color: #2563eb; }
 
-    /* Responsive */
+    /* Footer */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
+
+    @media (max-width: 900px) {
+      .campaign-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-right { margin-left: 0; }
+    }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      form { width: 100%; padding: 15px; }
     }
   </style>
 </head>
@@ -123,7 +118,7 @@
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
         Janvi Sender App
     </a>
-    <div>
+    <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
@@ -140,75 +135,110 @@
   </nav>
 
   <div class="container">
-    <h1>New Campaign</h1>
-    <hr>
-    <h2>1. Send Test Message (Optional)</h2>
-    <form action="/campaigns/test" method="POST">
-      <div>
-        <label for="companyId-test">Select Company:</label>
-        <select name="companyId" id="companyId-test" required>
-          <option value="">-- Please Select --</option>
-          <% companies.forEach(function(company) { %>
-            <option value="<%= company._id %>"><%= company.name %></option>
-          <% }); %>
-        </select>
-      </div>
-      <div>
-        <label for="templateId-test">Select Template:</label>
-        <select name="templateId" id="templateId-test" required>
-          <option value="">-- Please Select --</option>
-          <% templates.forEach(function(template) { %>
-            <option value="<%= template._id %>">
-              <%= template.name %> (<%= template.templateName %>)
-            </option>
-          <% }); %>
-        </select>
-      </div>
-      <div>
-        <label for="testPhone">Your Phone Number:</label>
-        <input type="tel" name="testPhone" id="testPhone" placeholder="e.g., +919607732123" required>
-      </div>
-      <button type="submit" class="btn-green">Send Test</button>
-    </form>
+    <h1>Create New Campaign</h1>
 
-    <hr>
+    <!-- ADDED: Flash Messages Section -->
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success"><%= success_msg %></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error"><%= error_msg %></div>
+    <% } %>
 
-    <h2>2. Start Full Campaign</h2>
-    <form action="/campaigns/start" method="POST">
-      <div>
-        <label for="companyId">Select Company:</label>
-        <select name="companyId" id="companyId" required>
-          <option value="">-- Please Select --</option>
-          <% companies.forEach(function(company) { %>
-            <option value="<%= company._id %>"><%= company.name %></option>
-          <% }); %>
-        </select>
-      </div>
-
-      <div>
-        <label for="segmentId">Select Segment:</label>
-        <select name="segmentId" id="segmentId" required>
-          <option value="">-- Please Select --</option>
-          <% segments.forEach(function(segment) { %>
-            <option value="<%= segment._id %>"><%= segment.name %></option>
-          <% }); %>
-        </select>
-      </div>
-
-      <div>
-        <label for="templateId">Select Template:</label>
-        <select name="templateId" id="templateId" required>
-          <option value="">-- Please Select --</option>
-          <% templates.forEach(function(template) { %>
-            <option value="<%= template._id %>">
-              <%= template.name %> (<%= template.templateName %>)
-            </option>
-          <% }); %>
-        </select>
-      </div>
+    <div class="campaign-grid">
       
-      <button type="submit" class="btn-blue">Start Campaign</button>
-    </form>
+      <!-- MAIN CAMPAIGN FORM -->
+      <div class="widget">
+        <h2>🚀 Send Bulk Campaign</h2>
+        <p style="color: #666; margin-bottom: 20px;">Select a company, a segment, and a template to start sending messages.</p>
+        
+        <form action="/campaigns/start" method="POST">
+          <!-- ADDED: Campaign Name Input (Required by Controller) -->
+          <div>
+            <label for="name">Campaign Name (Internal Use):</label>
+            <input type="text" name="name" id="name" placeholder="e.g., Diwali Offer 2026" required>
+          </div>
+
+          <div>
+            <label for="companyId">Select Company:</label>
+            <select name="companyId" id="companyId" required>
+              <option value="">-- Select Company --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div>
+            <label for="segmentId">Select Segment (Target Audience):</label>
+            <select name="segmentId" id="segmentId" required>
+              <option value="">-- Select Segment --</option>
+              <% segments.forEach(function(segment) { %>
+                <option value="<%= segment._id %>"><%= segment.name %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div>
+            <label for="templateId">Select WhatsApp Template:</label>
+            <select name="templateId" id="templateId" required>
+              <option value="">-- Select Template --</option>
+              <% templates.forEach(function(template) { %>
+                <option value="<%= template._id %>">
+                  <!-- Display both name and code for clarity -->
+                  <%= template.name %> (<%= template.templateName || template.codeName %>)
+                </option>
+              <% }); %>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-green">Start Campaign Now</button>
+        </form>
+      </div>
+
+      <!-- TEST MESSAGE WIDGET -->
+      <div class="widget" style="background-color: #eff6ff; border: 1px solid #bfdbfe;">
+        <h2>🧪 Send Test Message</h2>
+        <p style="font-size: 0.9em; color: #1e40af;">Always send a test message to yourself before starting a bulk campaign.</p>
+        
+        <form action="/campaigns/test" method="POST">
+          <div>
+            <label for="testPhone">Test Phone Number:</label>
+            <input type="tel" name="testPhone" id="testPhone" placeholder="e.g., 919876543210" required>
+            <small style="color: #666;">(With or without +91)</small>
+          </div>
+
+          <div>
+            <label for="testCompanyId">Select Company:</label>
+            <select name="companyId" id="testCompanyId" required>
+              <option value="">-- Select --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div>
+            <label for="testTemplateId">Select Template:</label>
+            <select name="templateId" id="testTemplateId" required>
+              <option value="">-- Select --</option>
+              <% templates.forEach(function(template) { %>
+                <option value="<%= template._id %>">
+                   <%= template.name %>
+                </option>
+              <% }); %>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-blue">Send Test Message</button>
+        </form>
+      </div>
+
+    </div>
   </div>
+
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
 </body>
 </html>

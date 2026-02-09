@@ -20,9 +20,12 @@ exports.getCampaignPage = async (req, res) => {
     const templates = await Template.find(); 
 
     res.render('campaigns', {
+      user: req.user,
       companies: companies,
       segments: segments,
-      templates: templates 
+      templates: templates,
+      success_msg: req.flash('success_msg'),
+      error_msg: req.flash('error_msg')
     });
 
   } catch (error) {
@@ -33,26 +36,28 @@ exports.getCampaignPage = async (req, res) => {
 
 // @desc    Start sending a new bulk message campaign
 exports.startCampaign = async (req, res) => {
-  // Logic inside this function is lengthy but correct...
-  // (We assume the logic inside this function is correct and focuses on the exports)
-  
-  const { companyId, segmentId, templateId } = req.body; 
+  const { companyId, segmentId, templateId, name } = req.body; 
 
   if (!companyId || !segmentId || !templateId) { 
-    return res.status(400).send('Company, Segment, and Template are all required.');
+    req.flash('error_msg', 'Company, Segment, and Template are required.');
+    return res.redirect('/campaigns');
   }
 
   try {
     const company = await Company.findById(companyId);
     if (!company) {
-      return res.status(404).send('Company not found.');
+      req.flash('error_msg', 'Company not found.');
+      return res.redirect('/campaigns');
     }
 
     const template = await Template.findById(templateId);
     if (!template) {
-      return res.status(404).send('Template not found.');
+      req.flash('error_msg', 'Template not found.');
+      return res.redirect('/campaigns');
     }
-    const templateName = template.templateName; 
+    
+    // Support both naming conventions for safety
+    const templateName = template.codeName || template.templateName || template.name; 
 
     const segmentContacts = await Contact.find({
       company: companyId,
@@ -60,9 +65,8 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (segmentContacts.length === 0) {
-      return res.send(`<h2>No Contacts Found</h2>
-                       <p>No contacts were found for that company and segment combination.</p>
-                       <a href="/campaigns">Try Again</a>`);
+       req.flash('error_msg', 'No contacts found in this segment for this company.');
+       return res.redirect('/campaigns');
     }
     
     // --- BLOCKLIST CHECK LOGIC ---
@@ -81,14 +85,13 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (contactsToSend.length === 0) {
-      return res.send(`<h2>Campaign Blocked</h2>
-                       <p>All ${segmentContacts.length} contacts were found in the blocklist.</p>
-                       <a href="/campaigns">Try Again</a>`);
+      req.flash('error_msg', 'Campaign Blocked: All contacts are in the blocklist.');
+      return res.redirect('/campaigns');
     }
     // --- END BLOCKLIST CHECK ---
 
     const newCampaign = new Campaign({
-      name: template.name, 
+      name: name || template.name, 
       company: companyId,
       segment: segmentId,
       templateName: templateName, 
@@ -99,15 +102,20 @@ exports.startCampaign = async (req, res) => {
 
     const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
 
+    // Handle Token/ID field names safely (Support both versions)
+    const token = company.permanentToken || company.whatsappToken;
+    const phoneId = company.phoneNumberId || company.numberId;
+
     let jobsAdded = 0;
     
     for (const contact of contactsToSend) { 
       const jobData = {
         contact: contact,
         templateName: templateName, 
-        companyToken: company.whatsappToken,
-        companyNumberId: company.numberId,
-        campaignId: newCampaign._id 
+        companyToken: token,
+        companyNumberId: phoneId,
+        campaignId: newCampaign._id,
+        variableValue: contact.name || 'Customer' // Pass name for variables
       };
 
       await qstashClient.publishJSON({
@@ -118,15 +126,13 @@ exports.startCampaign = async (req, res) => {
       jobsAdded++;
     }
 
-    res.send(`<h2>Campaign Started!</h2>
-              <p>Successfully added ${jobsAdded} messages to the QStash queue.</p>
-              ${blockedCount > 0 ? `<p style="color: red;">Note: ${blockedCount} contacts were skipped due to the blocklist.</p>` : ''}
-              <p>A new report has been created for this campaign.</p>
-              <a href="/campaigns">Start Another Campaign</a>`);
+    req.flash('success_msg', `Campaign Started! ${jobsAdded} messages queued via QStash.`);
+    res.redirect('/reports');
 
   } catch (error) {
     console.error('Error starting campaign:', error);
-    res.status(500).send('An error occurred while starting the campaign.');
+    req.flash('error_msg', 'Server Error starting campaign.');
+    res.redirect('/campaigns');
   }
 };
 
@@ -134,45 +140,64 @@ exports.startCampaign = async (req, res) => {
 // @desc    Send a single test message
 exports.sendTestMessage = async (req, res) => {
   try {
-    const { companyId, templateId, testPhone } = req.body;
-    if (!companyId || !templateId || !testPhone) {
-      return res.status(400).send('Company, Template, and Test Phone Number are required.');
+    const { companyId, templateId, phone } = req.body;
+    // Handle form naming differences (phone vs testPhone)
+    const targetPhone = phone || req.body.testPhone;
+
+    if (!companyId || !templateId || !targetPhone) {
+      req.flash('error_msg', 'Company, Template, and Test Phone Number are required.');
+      return res.redirect('/campaigns');
     }
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
 
-    if (!company) return res.status(404).send('Company not found.');
-    if (!template) return res.status(404).send('Template not found.');
+    if (!company) {
+        req.flash('error_msg', 'Company not found.');
+        return res.redirect('/campaigns');
+    }
+    if (!template) {
+        req.flash('error_msg', 'Template not found.');
+        return res.redirect('/campaigns');
+    }
 
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${company.numberId}/messages`;
+    // Handle Token/ID field names safely
+    const token = company.permanentToken || company.whatsappToken;
+    const phoneId = company.phoneNumberId || company.numberId;
+
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
+    // Construct Payload
     const messageData = {
       messaging_product: "whatsapp",
-      to: testPhone, 
+      to: targetPhone, 
       type: "template",
       template: {
-        name: template.templateName,
-        language: { code: "en_US" },
-        components: [
-          {
+        name: template.codeName || template.templateName, // Use the correct WhatsApp name
+        language: { code: "en_US" }, // FORCE US ENGLISH
+        components: []
+      }
+    };
+
+    // --- CONDITIONAL VARIABLE INJECTION (FIX FOR #100 ERROR) ---
+    // Only add the variable component if the template actually needs it.
+    // We check if 'variable1' exists or 'variables' is not empty.
+    if (template.variable1 || (template.variables && template.variables.length > 0)) {
+        messageData.template.components.push({
             type: "body",
             parameters: [
               {
                 type: "text",
-                text: "Test User", 
-                parameter_name: "customer_name" 
+                text: "Valued Customer" // Dummy data for test
               }
             ]
-          }
-        ]
-      }
-    };
+        });
+    }
 
     const response = await fetch(WHATSAPP_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${company.whatsappToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(messageData)
@@ -181,16 +206,27 @@ exports.sendTestMessage = async (req, res) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('Test Message Error:', JSON.stringify(result.error, null, 2));
-      return res.status(500).send(`Error sending test: ${result.error.message}`);
+      console.error('Test Message Error:', JSON.stringify(result, null, 2));
+      const errorMsg = result.error ? result.error.message : 'Unknown Meta API Error';
+      
+      // Send helpful error to user
+      if (errorMsg.includes('Invalid parameter')) {
+          req.flash('error_msg', 'Meta Error: Template variable mismatch. Check if your template needs a variable.');
+      } else if (errorMsg.includes('does not exist')) {
+          req.flash('error_msg', 'Meta Error: Template name or language mismatch. Ensure it is "en_US".');
+      } else {
+          req.flash('error_msg', `Meta Error: ${errorMsg}`);
+      }
+      return res.redirect('/campaigns');
     }
 
-    console.log(`Test message sent successfully to: ${testPhone}`);
-    
+    console.log(`Test message sent successfully to: ${targetPhone}`);
+    req.flash('success_msg', `Test message sent to ${targetPhone} successfully!`);
     res.redirect('/campaigns');
 
   } catch (error) {
     console.error('Error sending test message:', error);
-    res.status(500).send('An error occurred while sending the test.');
+    req.flash('error_msg', 'An error occurred while sending the test.');
+    res.redirect('/campaigns');
   }
 };

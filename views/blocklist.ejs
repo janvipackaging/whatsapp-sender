@@ -10,19 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* Global Styles */
-    body { 
-      font-family: 'Inter', sans-serif; 
-      margin: 0; 
-      background-color: #f0f2f5; 
-      color: #333;
-    }
-    .container {
-      padding: 30px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
-    h1, h2 { color: #1e3a8a; margin-top: 0; }
+    body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
+    h1 { color: #1e3a8a; margin-top: 0; }
+    h2 { margin-top: 0; font-size: 1.2em; color: #333; }
     
     /* Navigation (Header) */
     nav { 
@@ -44,96 +35,73 @@
       text-decoration: none;
     }
     .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
+      height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
     }
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
     nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      font-weight: 500;
+      padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
-    .nav-right { margin-left: auto; } 
+    .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
-
-    /* --- NEW: Content Wrapper --- */
-    .content-wrapper {
-      max-width: 900px; /* This controls the width */
-      margin: 0 auto;  /* This centers it */
-    }
-    /* --- END NEW --- */
     
-    /* Alert Box Styling */
+    /* Admin Buttons CSS */
+    .btn-admin-user { background-color: #64748b !important; }
+    .btn-admin-user:hover { background-color: #475569 !important; }
+    .btn-admin-company { background-color: #34495e !important; }
+    .btn-admin-company:hover { background-color: #2c3e50 !important; }
+    
+    /* Alerts */
     .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
-    /* Form Styling */
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .form-group { grid-column: span 1; }
-    .form-full { grid-column: span 2; }
-    form { 
-      background: #fff; 
-      border-radius: 8px; 
-      padding: 25px; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-      margin-bottom: 30px; 
+    /* Layout Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr; /* Form on Left, Table on Right */
+      gap: 30px;
     }
+
+    /* Widgets */
+    .widget { background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    
+    form div { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
     input[type="text"], input[type="tel"], select {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ddd;
       border-radius: 5px;
       box-sizing: border-box; 
+      font-size: 1em;
     }
     button { 
       padding: 12px 20px; 
-      background-color: #dc3545; 
       color: white; 
       border-radius: 5px; 
       border: none;
       font-size: 1em;
       cursor: pointer;
-      font-weight: 600;
+      width: 100%;
+      font-weight: 700;
+      transition: background-color 0.2s;
     }
-    button:hover { background-color: #c82333; }
+    .btn-red { background-color: #dc2626; }
+    .btn-red:hover { background-color: #b91c1c; }
 
-    /* Table Styling */
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      background: #fff; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
-      border-radius: 8px; 
-      margin-top: 20px; 
-    }
+    /* Table */
+    .table-widget { background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #f4f7f6; }
-    .btn-remove { 
-      background-color: #ffc107; 
-      color: #333; 
-      padding: 5px 10px; 
-      border-radius: 4px; 
-      text-decoration: none; 
-      font-weight: 600; 
-      font-size: 0.9em;
+    th { background-color: #f4f7f6; font-weight: 600; }
+    .btn-unblock { 
+      background-color: #22c55e; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.9em; 
     }
-    .btn-remove:hover { background-color: #e0a800; }
-    
-    /* Footer Style */
+    .btn-unblock:hover { background-color: #16a34a; }
+
+    /* Footer */
     footer {
       background-color: #1e3a8a;
       color: #ccc;
@@ -143,31 +111,29 @@
       font-size: 0.85em;
     }
 
-    /* Responsive */
-    @media (max-width: 950px) {
-      .content-wrapper { max-width: 95%; } 
+    @media (max-width: 900px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-links { width: 100%; }
+       .nav-right { margin-left: 0; }
     }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
-      .form-grid { grid-template-columns: 1fr; }
-      .form-group, .form-full { grid-column: span 1; }
-      table, thead, tbody, th, td, tr { display: block; }
-      thead tr { position: absolute; top: -9999px; left: -9999px; }
-      tr { border: 1px solid #ccc; margin-bottom: 15px; }
-      td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }
-      td:before { content: attr(data-label); position: absolute; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; text-align: left; }
     }
   </style>
 </head>
 <body>
-
+  
+  <!-- UPDATED NAVIGATION BAR -->
   <nav>
     <a href="/" class="brand-logo-container">
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
         Janvi Sender App
     </a>
-    <div>
+    <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
@@ -175,76 +141,97 @@
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      
+      <!-- Admin-Only Buttons -->
+      <% if (user && user.role === 'admin') { %>
+        <a href="/users/manage" class="btn-admin-user">Manage Users</a>
+        <a href="/companies" class="btn-admin-company">Manage Companies</a>
+      <% } %>
     </div>
     <div class="nav-right">
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
       <a href="/users/profile" class="btn-profile">Your Profile</a>
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
   </nav>
+
   <div class="container">
-    <div class="content-wrapper">
-      <h1>Manage Blocklist</h1>
+    <h1>Manage Blocklist</h1>
+    <p style="color: #666; margin-bottom: 20px;">Add numbers here to prevent them from receiving any campaign messages.</p>
 
-      <% if (success_msg && success_msg.length > 0) { %>
-        <div class="alert alert-success"><%= success_msg %></div>
-      <% } %>
-      <% if (error_msg && error_msg.length > 0) { %>
-        <div class="alert alert-error"><%= error_msg %></div>
-      <% } %>
+    <% if (success_msg && success_msg.length > 0) { %>
+      <div class="alert alert-success"><%= success_msg %></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+      <div class="alert alert-error"><%= error_msg %></div>
+    <% } %>
 
-      <h2>Add Number to Blocklist</h2>
-      <form action="/blocklist/add" method="POST">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="phone">Phone Number (E.164 format):</label>
-            <input type="tel" name="phone" id="phone" placeholder="e.g., +14155552671" required>
-          </div>
-          <div class="form-group">
-            <label for="companyId">Select Company (Segregation):</label>
+    <div class="content-grid">
+      
+      <!-- BLOCK NUMBER FORM -->
+      <div class="widget">
+        <h2>🚫 Block a Number</h2>
+        <form action="/blocklist/add" method="POST">
+          <div>
+            <label for="companyId">Select Company:</label>
             <select name="companyId" id="companyId" required>
-              <option value="">-- Block for which Company --</option>
+              <option value="">-- Select Company --</option>
               <% companies.forEach(function(company) { %>
                 <option value="<%= company._id %>"><%= company.name %></option>
               <% }); %>
             </select>
           </div>
-          <div class="form-full">
-            <label for="reason">Reason (Optional):</label>
-            <input type="text" name="reason" id="reason" placeholder="e.g., Customer Opt-Out via SMS">
-          </div>
-          <div class="form-full">
-            <button type="submit">Block Number</button>
-          </div>
-        </div>
-      </form>
 
-      <h2>Current Blocked Numbers</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Phone Number</th>
-            <th>Company</th>
-            <th>Reason</th>
-            <th>Date Added</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% blockedNumbers.forEach(function(block) { %>
+          <div>
+            <label for="phone">Phone Number:</label>
+            <input type="tel" name="phone" id="phone" placeholder="e.g., +919876543210" required>
+          </div>
+
+          <div>
+            <label for="reason">Reason (Optional):</label>
+            <input type="text" name="reason" id="reason" placeholder="e.g., Customer Opt-out">
+          </div>
+
+          <button type="submit" class="btn-red">Block Number</button>
+        </form>
+      </div>
+
+      <!-- BLOCKED LIST -->
+      <div class="table-widget">
+        <h2>Blocked Numbers</h2>
+        <table>
+          <thead>
             <tr>
-              <td data-label="Phone"><%= block.phone %></td>
-              <td data-label="Company"><%= block.company ? block.company.name : 'N/A' %></td>
-              <td data-label="Reason"><%= block.reason %></td>
-              <td data-label="Date"><%= new Date(block.createdAt).toLocaleDateString() %></td>
-              <td data-label="Action">
-                <a href="/blocklist/remove/<%= block._id %>" class="btn-remove" onclick="return confirm('Are you sure you want to remove this block?');">Remove</a>
-              </td>
+              <th>Phone Number</th>
+              <th>Company</th>
+              <th>Reason</th>
+              <th>Action</th>
             </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    </div> </div>
+          </thead>
+          <tbody>
+            <% blockedNumbers.forEach(function(item) { %>
+              <tr>
+                <td><%= item.phone %></td>
+                <td><%= item.company ? item.company.name : 'N/A' %></td>
+                <td><%= item.reason || '-' %></td>
+                <td>
+                  <form action="/blocklist/delete/<%= item._id %>" method="POST" onsubmit="return confirm('Unblock this number?');">
+                    <button type="submit" class="btn-unblock" style="width: auto;">Unblock</button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+
+            <% if (blockedNumbers.length === 0) { %>
+              <tr>
+                <td colspan="4" style="text-align: center; color: #666;">No numbers are currently blocked.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 
   <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.

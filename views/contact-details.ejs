@@ -18,10 +18,13 @@
       color: #333;
     }
     .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
-    h1, h2 { color: #1e3a8a; margin-top: 0; }
+    h1 { color: #1e3a8a; margin-top: 0; margin-bottom: 5px; }
+    h2 { margin-top: 0; font-size: 1.2em; color: #333; margin-bottom: 20px; }
     a { color: #007bff; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .breadcrumb { margin-bottom: 20px; font-size: 1.1em; }
+    .breadcrumb { margin-bottom: 20px; font-size: 0.95em; color: #666; }
+    .breadcrumb a { color: #666; font-weight: 500; }
+    .breadcrumb a:hover { color: #1e3a8a; }
 
     /* Navigation (Header) */
     nav { 
@@ -43,29 +46,22 @@
       text-decoration: none;
     }
     .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
+      height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
     }
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
     nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      font-weight: 500;
+      padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
-    .nav-right { margin-left: auto; } 
+    .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
+    
+    /* Admin Buttons CSS */
+    .btn-admin-user { background-color: #64748b !important; }
+    .btn-admin-user:hover { background-color: #475569 !important; }
+    .btn-admin-company { background-color: #34495e !important; }
+    .btn-admin-company:hover { background-color: #2c3e50 !important; }
     
     /* Layout */
     .profile-grid {
@@ -91,8 +87,8 @@
       grid-template-columns: 1fr 1fr;
       gap: 15px;
     }
-    form div { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    form div { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 0.9em; }
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
       width: 100%;
       padding: 10px;
@@ -101,7 +97,7 @@
       box-sizing: border-box; 
       font-size: 0.95em;
     }
-    textarea { min-height: 100px; font-family: inherit; }
+    textarea { min-height: 100px; font-family: inherit; resize: vertical; }
     button { 
       padding: 12px 20px; 
       background-color: #007bff; 
@@ -111,32 +107,35 @@
       font-size: 1em;
       font-weight: 600;
       cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
     }
     button:hover { background-color: #0056b3; }
 
     /* Activity Log Styling */
-    .activity-list { list-style-type: none; padding: 0; max-height: 800px; overflow-y: auto; }
+    .activity-list { list-style-type: none; padding: 0; max-height: 600px; overflow-y: auto; }
     .activity-item {
       position: relative;
       padding-left: 30px;
       padding-bottom: 25px;
-      border-left: 2px solid #e0e0e0;
+      border-left: 2px solid #e2e8f0;
     }
+    .activity-item:last-child { border-left: 2px solid transparent; }
     .activity-item:before { /* The timeline dot */
       content: '';
       position: absolute;
       left: -9px; 
-      top: 5px;
+      top: 0;
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background-color: #007bff;
-      border: 3px solid #fff;
+      background-color: #3b82f6;
+      border: 4px solid #fff;
+      box-shadow: 0 0 0 1px #e2e8f0;
     }
-    .activity-item:first-child:before { background-color: #28a745; } 
-    .activity-item strong { color: #333; font-size: 1.05em; }
-    .activity-item span { font-size: 0.85em; color: #777; display: block; margin-bottom: 8px; }
-    .activity-item p { margin: 5px 0 0 0; color: #555; }
+    .activity-item:first-child:before { background-color: #22c55e; } 
+    .activity-item strong { color: #1e293b; font-size: 1em; display: block; margin-bottom: 4px; }
+    .activity-item span { font-size: 0.85em; color: #64748b; display: block; margin-bottom: 4px; }
     
     /* Footer Style */
     footer {
@@ -151,9 +150,15 @@
     @media (max-width: 900px) {
       .profile-grid { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-links { width: 100%; }
+       .nav-right { margin-left: 0; }
+    }
     @media (max-width: 600px) {
       .container { padding: 15px; }
       nav { padding: 10px 15px; }
+      form .form-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -164,7 +169,7 @@
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
         Janvi Sender App
     </a>
-    <div>
+    <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
@@ -172,9 +177,14 @@
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      
+      <!-- Admin-Only Buttons -->
+      <% if (user && user.role === 'admin') { %>
+        <a href="/users/manage" class="btn-admin-user">Manage Users</a>
+        <a href="/companies" class="btn-admin-company">Manage Companies</a>
+      <% } %>
     </div>
     <div class="nav-right">
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
       <a href="/users/profile" class="btn-profile">Your Profile</a>
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
@@ -184,9 +194,10 @@
     <div class="breadcrumb">
       <a href="/contacts">&larr; Back to Master Contact List</a>
     </div>
+    
     <h1><%= contact.name %></h1>
-    <p style="margin-top: -10px; font-size: 1.1em; color: #555;">
-      <%= contact.jobTitle || 'No title' %> at <%= contact.companyName || 'No company' %>
+    <p style="margin-top: 0; font-size: 1.1em; color: #64748b; margin-bottom: 25px;">
+      <%= contact.jobTitle || 'No title' %> at <strong style="color: #333;"><%= contact.companyName || 'No company' %></strong>
     </p>
 
     <% if (success_msg && success_msg.length > 0) { %>
@@ -199,7 +210,7 @@
     <div class="profile-grid">
       
       <div class="widget">
-        <h2>Contact Details</h2>
+        <h2>✏️ Edit Contact Details</h2>
         <form action="/contacts/update/<%= contact._id %>" method="POST">
           <div class="form-grid">
             <div>
@@ -211,10 +222,12 @@
               <input type="tel" name="phone" id="phone" value="<%= contact.phone %>" required>
             </div>
           </div>
+          
           <div>
             <label for="email">Email:</label>
             <input type="email" name="email" id="email" value="<%= contact.email || '' %>">
           </div>
+          
           <div class="form-grid">
             <div>
               <label for="city">City:</label>
@@ -225,6 +238,7 @@
               <input type="text" name="companyName" id="companyName" value="<%= contact.companyName || '' %>">
             </div>
           </div>
+          
           <div class="form-grid">
             <div>
               <label for="jobTitle">Job Title:</label>
@@ -235,6 +249,7 @@
               <input type="text" name="productInterest" id="productInterest" value="<%= contact.productInterest || '' %>">
             </div>
           </div>
+          
           <div class="form-grid">
             <div>
               <label for="leadSource">Lead Source:</label>
@@ -252,18 +267,20 @@
               </select>
             </div>
           </div>
+          
           <div>
             <label for="notes">Notes:</label>
             <textarea name="notes" id="notes"><%= contact.notes || '' %></textarea>
           </div>
+          
           <button type="submit">Save Changes</button>
         </form>
       </div>
 
       <div class="widget">
-        <h2>Activity Log</h2>
+        <h2>📜 Activity Log</h2>
         <ul class="activity-list">
-          <% if (activityLog.length > 0) { %>
+          <% if (activityLog && activityLog.length > 0) { %>
             <% activityLog.forEach(function(activity) { %>
               <li class="activity-item">
                 <span><%= new Date(activity.date).toLocaleString() %></span>
@@ -272,7 +289,7 @@
             <% }); %>
           <% } else { %>
             <li class="activity-item" style="border-left: none;">
-              <strong style="padding-left: 0;">No activity found for this contact.</strong>
+              <strong style="padding-left: 0; color: #94a3b8;">No activity found for this contact.</strong>
             </li>
           <% } %>
         </ul>

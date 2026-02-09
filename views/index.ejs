@@ -19,7 +19,7 @@
     }
     .container {
       padding: 30px;
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 0 auto;
     }
     h1 { color: #1e3a8a; margin-top: 0; }
@@ -72,11 +72,13 @@
     }
     nav a:hover { background-color: #3730a3; }
     .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
+    
     .btn-profile { background-color: #64748b !important; }
     .btn-profile:hover { background-color: #475569 !important; }
     .btn-logout { background-color: #dc2626 !important; }
     .btn-logout:hover { background-color: #b91c1c !important; }
     
+    /* Admin Buttons */
     .btn-admin-user { background-color: #64748b !important; }
     .btn-admin-user:hover { background-color: #475569 !important; }
     .btn-admin-company { background-color: #34495e !important; }
@@ -88,7 +90,7 @@
       margin-bottom: 20px;
       border-radius: 5px;
       font-weight: 500;
-      max-width: 95%; 
+      max-width: 100%; 
     }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
@@ -245,6 +247,7 @@
 </head>
 <body>
 
+  <!-- UPDATED NAVIGATION BAR -->
   <nav>
     <a href="/" class="brand-logo-container">
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
@@ -252,12 +255,14 @@
     </a>
     <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
-      <a href="/campaigns">New Campaign</a> <a href="/templates">Manage Templates</a>
+      <a href="/campaigns">New Campaign</a> <!-- Link Fixed Here -->
+      <a href="/templates">Manage Templates</a>
       <a href="/segments">Manage Segments</a> 
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
       
+      <!-- Admin-Only Buttons -->
       <% if (user && user.role === 'admin') { %>
         <a href="/users/manage" class="btn-admin-user">Manage Users</a>
         <a href="/companies" class="btn-admin-company">Manage Companies</a>
@@ -268,8 +273,10 @@
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
   </nav>
+
   <div class="container">
 
+    <!-- Flash Messages -->
     <% if (success_msg && success_msg.length > 0) { %>
       <div class="alert alert-success">
         <%= success_msg %>
@@ -302,6 +309,7 @@
 
       <div>
         
+        <!-- PENDING USER APPROVAL WIDGET -->
         <% if (user && user.role === 'admin') { %>
         <div class="widget" style="background-color: #fffbeb; border: 1px solid #fde68a; margin-bottom: 25px;">
           <h2>🚨 User Approval Needed</h2>
@@ -323,6 +331,7 @@
         </div>
         <% } %>
         
+        <!-- Inbox Summary Widget -->
         <div class="widget" style="margin-bottom: 25px;">
           <h2>Recent Replies</h2>
           <ul class="inbox-list">
@@ -344,6 +353,7 @@
           <a href="/inbox" class="widget-link">Go to full Inbox &rarr;</a>
         </div>
         
+        <!-- Last Campaign Widget -->
         <div class="widget">
           <h2>Last Campaign Summary</h2>
           <% if (lastCampaign) { %>
@@ -359,7 +369,7 @@
               <span class="report-item-label">Delivered:</span>
               <span class="report-item-value"><%= lastCampaign.deliveredCount %></span>
             </div>
-            <div class.report-item">
+            <div class="report-item">
               <span class="report-item-label">Read:</span>
               <span class="report-item-value"><%= lastCampaign.readCount %></span>
             </div>
@@ -374,6 +384,7 @@
         </div>
       </div>
 
+      <!-- Column 2: Quick-Add Contact Form -->
       <div class="widget">
         <h2>Quick-Add Contact</h2>
         <form action="/contacts/add" method="POST">
@@ -407,7 +418,11 @@
         </form>
       </div>
 
-    </div> </div> <footer>
+    </div>
+
+  </div>
+  
+  <footer>
     &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
   </footer>
 

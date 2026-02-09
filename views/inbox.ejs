@@ -7,7 +7,7 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     /* Global Styles */
@@ -19,12 +19,12 @@
     }
     .container {
       padding: 30px;
-      max-width: 1400px;
+      max-width: 1000px; /* Narrower container for better reading experience */
       margin: 0 auto;
     }
     h1 { color: #1e3a8a; margin-top: 0; }
 
-    /* Navigation (Header) - COPIED FROM INDEX.EJS */
+    /* Navigation (Header) */
     nav { 
       background-color: #1e3a8a; 
       padding: 15px 30px;
@@ -44,98 +44,150 @@
       text-decoration: none;
     }
     .logo-img {
-      height: 35px; 
-      width: auto;
-      margin-right: 10px;
-      background-color: white;
-      border-radius: 4px;
-      padding: 3px;
+      height: 35px; width: auto; margin-right: 10px; background-color: white; border-radius: 4px; padding: 3px;
     }
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; }
     nav a { 
-      padding: 8px 15px; 
-      text-decoration: none; 
-      background-color: #4f46e5; 
-      color: white; 
-      border-radius: 4px; 
-      margin-right: 12px;
-      margin-bottom: 8px;
-      margin-top: 8px;
-      display: inline-block;
-      transition: background-color 0.2s;
-      font-weight: 500;
+      padding: 8px 15px; text-decoration: none; background-color: #4f46e5; color: white; border-radius: 4px; margin-right: 12px; margin-bottom: 8px; margin-top: 8px; display: inline-block; font-weight: 500;
     }
     nav a:hover { background-color: #3730a3; }
-    .nav-right { margin-left: auto; } 
+    .nav-right { margin-left: auto; display: flex; flex-wrap: wrap; } 
     .btn-profile { background-color: #64748b !important; }
     .btn-logout { background-color: #dc2626 !important; }
     
-    /* Alert Box Styling */
-    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; max-width: 90%; margin-left: auto; margin-right: auto; }
+    /* Admin Buttons CSS */
+    .btn-admin-user { background-color: #64748b !important; }
+    .btn-admin-user:hover { background-color: #475569 !important; }
+    .btn-admin-company { background-color: #34495e !important; }
+    .btn-admin-company:hover { background-color: #2c3e50 !important; }
+    
+    /* Alerts */
+    .alert { padding: 15px; margin-bottom: 20px; border-radius: 5px; font-weight: 500; }
     .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
-    /* Message List Styling */
-    .message-list { list-style-type: none; padding: 0; }
-    .message-item {
-      background: #fff;
-      border-radius: 8px;
-      padding: 15px 20px;
-      margin-bottom: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-      margin-left: auto;
-      margin-right: auto;
-      max-width: 90%;
-    }
-    .message-header {
-      border-bottom: 1px solid #eee;
-      padding-bottom: 10px;
-      margin-bottom: 10px;
+    /* Header Actions */
+    .header-actions {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
+      margin-bottom: 20px;
     }
-    .message-contact { font-weight: 600; font-size: 1.1em; color: #1e3a8a; } /* Updated color */
-    .message-contact span { font-weight: 400; color: #555; font-size: 0.9em; }
-    .message-time { font-size: 0.9em; color: #777; margin-top: 5px; }
-    .message-body { font-size: 1em; color: #222; line-height: 1.5; }
-    .message-company { font-size: 0.85em; color: #4f46e5; font-weight: 500; } /* Updated color */
-    
-    /* Button Styles */
-    .btn {
-      padding: 5px 10px;
-      border-radius: 4px;
-      text-decoration: none;
-      color: white;
-      font-size: 0.9em;
-      font-weight: 500;
-      margin-right: 15px;
-    }
-    .btn-read { background-color: #28a745; }
-    .btn-read:hover { background-color: #218838; }
     .btn-read-all {
-      background-color: #17a2b8;
+      background-color: #0ea5e9;
       color: white;
       text-decoration: none;
-      padding: 8px 12px;
-      border-radius: 5px;
+      padding: 10px 20px;
+      border-radius: 6px;
       font-weight: 600;
-      display: inline-block;
-      margin-left: 20px;
+      transition: background-color 0.2s;
     }
-    .btn-read-all:hover { background-color: #138496; }
-    .header-actions { display: flex; justify-content: space-between; align-items: center; max-width: 90%; margin-left: auto; margin-right: auto; margin-top: 20px;}
+    .btn-read-all:hover { background-color: #0284c7; }
+
+    /* Message List Styling */
+    .message-list { list-style-type: none; padding: 0; }
     
+    .message-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      border-left: 5px solid transparent; /* Default border */
+      transition: transform 0.2s;
+    }
+    
+    /* Unread Style */
+    .message-unread {
+      border-left: 5px solid #2563eb;
+      background-color: #f8fafc;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 12px;
+    }
+
+    .message-contact {
+      font-weight: 700;
+      font-size: 1.1em;
+      color: #1e3a8a;
+    }
+    
+    .message-meta {
+      font-size: 0.85em;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .message-body {
+      font-size: 1.05em;
+      color: #334155;
+      line-height: 1.6;
+      white-space: pre-wrap; /* Preserves line breaks */
+    }
+
+    .btn-mark-read {
+      background-color: #22c55e;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.85em;
+      font-weight: 600;
+      margin-left: 10px;
+      display: inline-block;
+    }
+    .btn-mark-read:hover { background-color: #16a34a; }
+
+    .new-badge {
+      background-color: #ef4444;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #1e3a8a;
+      color: #ccc;
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 30px;
+      font-size: 0.85em;
+    }
+
+    @media (max-width: 768px) {
+       nav { flex-direction: column; align-items: flex-start; }
+       .nav-links { width: 100%; }
+       .nav-right { margin-left: 0; }
+       .message-header { flex-direction: column; }
+       .btn-mark-read { margin-left: 0; margin-top: 10px; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 15px; }
+      nav { padding: 10px 15px; }
+    }
   </style>
 </head>
 <body>
   
+  <!-- UPDATED NAVIGATION BAR -->
   <nav>
     <a href="/" class="brand-logo-container">
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
         Janvi Sender App
     </a>
-    <div>
+    <div class="nav-links">
       <a href="/contacts">Manage Contacts</a>
       <a href="/campaigns">New Campaign</a>
       <a href="/templates">Manage Templates</a>
@@ -143,71 +195,78 @@
       <a href="/reports">Campaign Reports</a>
       <a href="/inbox">View Inbox</a>
       <a href="/blocklist" style="background-color: #f59e0b;">Manage Blocklist</a>
+      
+      <!-- Admin-Only Buttons -->
+      <% if (user && user.role === 'admin') { %>
+        <a href="/users/manage" class="btn-admin-user">Manage Users</a>
+        <a href="/companies" class="btn-admin-company">Manage Companies</a>
+      <% } %>
     </div>
     <div class="nav-right">
-      <a href="/users/manage" style="background-color: #64748b;">Manage Users</a>
       <a href="/users/profile" class="btn-profile">Your Profile</a>
       <a href="/users/logout" class="btn-logout">Log Out</a>
     </div>
   </nav>
 
   <div class="container">
-    <h1>Inbox - Customer Replies</h1>
     
     <div class="header-actions">
-      <p><a href="/">&larr; Back to Dashboard</a></p>
-      <a href="/inbox/readall" class="btn-read-all">Mark All as Read</a>
+      <h1>Inbox</h1>
+      <a href="/inbox/readall" class="btn-read-all" onclick="return confirm('Mark all messages as read?');">Mark All as Read</a>
     </div>
 
     <% if (success_msg && success_msg.length > 0) { %>
-      <div class="alert alert-success">
-        <%= success_msg %>
-      </div>
+      <div class="alert alert-success"><%= success_msg %></div>
     <% } %>
     <% if (error_msg && error_msg.length > 0) { %>
-      <div class="alert alert-error">
-        <%= error_msg %>
-      </div>
+      <div class="alert alert-error"><%= error_msg %></div>
     <% } %>
 
     <ul class="message-list">
       
       <% messages.forEach(function(message) { %>
-        <li class="message-item" style="<%= message.isRead ? '' : 'border-left: 5px solid #007bff;' %>">
+        <li class="message-item <%= !message.isRead ? 'message-unread' : '' %>">
+          
           <div class="message-header">
-            <div class="message-contact">
-              <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown Contact' %>
-              <span class="message-company">
-                (<%= message.company ? message.company.name : 'Unknown Company' %>)
+            <div>
+              <div class="message-contact">
+                <%= message.contact ? (message.contact.name || message.contact.phone) : 'Unknown Contact' %>
                 <% if (!message.isRead) { %>
-                  <span style="color: #dc3545; font-weight: 600;"> (NEW)</span>
+                  <span class="new-badge">New</span>
                 <% } %>
-              </span>
-            </div>
-            <div style="display: flex; align-items: center; flex-wrap: wrap;">
-              <% if (!message.isRead) { %>
-                <a href="/inbox/read/<%= message._id %>" class="btn btn-read">Mark as Read</a>
-              <% } %>
-              <div class="message-time">
-                <%= new Date(message.createdAt).toLocaleString() %>
+              </div>
+              <div class="message-meta">
+                <%= new Date(message.createdAt).toLocaleDateString() %> at <%= new Date(message.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                &bull; 
+                <%= message.company ? message.company.name : 'Unknown Company' %>
               </div>
             </div>
+
+            <% if (!message.isRead) { %>
+              <a href="/inbox/read/<%= message._id %>" class="btn-mark-read">Mark as Read</a>
+            <% } else { %>
+              <span style="color: #94a3b8; font-size: 0.85em; font-style: italic;">Read</span>
+            <% } %>
           </div>
-          <div class="message-body">
-            <%= message.body %>
-          </div>
+
+          <div class="message-body"><%= message.body %></div>
+          
         </li>
       <% }); %>
 
       <% if (messages.length === 0) { %>
-        <li class="message-item">
-          <div class="message-body">
-            You have no messages yet.
-          </div>
+        <li class="message-item" style="text-align: center; color: #64748b; padding: 40px;">
+          <h3>All caught up! 🎉</h3>
+          <p>You have no messages in your inbox.</p>
         </li>
       <% } %>
 
     </ul>
   </div>
+
+  <footer>
+    &copy; <%= new Date().getFullYear() %> Janvi Packaging App. All rights reserved.
+  </footer>
+
 </body>
 </html>
