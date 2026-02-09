@@ -27,15 +27,17 @@ router.post('/add', contactsController.addSingleContact);
 // @desc    Handle downloading a CSV file of contacts
 router.get('/export', contactsController.exportContacts);
 
-// --- ADD THIS NEW ROUTE ---
 // @route   GET /view/:id
 // @desc    Show the single contact profile & activity log page
 router.get('/view/:id', contactsController.getSingleContactPage);
 
-// --- ADD THIS NEW ROUTE ---
 // @route   POST /update/:id
 // @desc    Handle the "Edit Contact" form submission
 router.post('/update/:id', contactsController.updateContact);
 
+// --- NEW ROUTE: CLEAN BAD CONTACTS ---
+// @route   POST /clean-bad
+// @desc    Delete only contacts with invalid formats (Scientific Notation/E+)
+router.post('/clean-bad', contactsController.cleanBadContacts);
 
 module.exports = router;

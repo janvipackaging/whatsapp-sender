@@ -68,7 +68,7 @@
     /* Form Section */
     .management-section {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr; /* UPDATED: 3 Columns for Clean Button */
       gap: 30px;
       margin-bottom: 30px;
     }
@@ -92,10 +92,12 @@
       border: none;
       font-size: 1em;
       cursor: pointer;
+      width: 100%; /* Ensure buttons fill the width */
     }
     .btn-green { background-color: #28a745; }
     .btn-grey { background-color: #6c757d; }
     .btn-blue { background-color: #007bff; }
+    .btn-red { background-color: #dc2626; } /* Added for Delete button */
 
     /* Filter Form */
     .filter-form {
@@ -119,7 +121,6 @@
       padding: 12px 15px; 
       text-align: left; 
       border-bottom: 1px solid #ddd; 
-      /* white-space: nowrap; <--- THIS WAS THE PROBLEM. IT IS NOW REMOVED. */
     }
     th { background-color: #f4f7f6; }
     tr:last-child td { border-bottom: none; }
@@ -130,7 +131,7 @@
       border-radius: 4px;
       font-size: 0.9em;
       font-weight: 500;
-      white-space: nowrap; /* Keep button from wrapping */
+      white-space: nowrap; 
     }
     
     /* Footer Style */
@@ -143,14 +144,17 @@
       font-size: 0.85em;
     }
 
+    @media (max-width: 1100px) {
+      .management-section { grid-template-columns: 1fr 1fr; } /* Tablet: 2 columns */
+    }
     @media (max-width: 900px) {
-      .management-section { grid-template-columns: 1fr; }
       .filter-form { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 768px) {
        nav { flex-direction: column; align-items: flex-start; }
        .nav-right { margin-left: 0; }
        .btn-logout { float: none; }
+       .management-section { grid-template-columns: 1fr; } /* Mobile: 1 column */
     }
     @media (max-width: 600px) {
       .container { padding: 15px; }
@@ -193,6 +197,7 @@
     <% } %>
 
     <div class="management-section">
+      <!-- 1. IMPORT -->
       <div class="widget">
         <h2>Import Contacts (CSV)</h2>
         <form action="/contacts/import" method="POST" enctype="multipart/form-data">
@@ -222,6 +227,7 @@
         </form>
       </div>
 
+      <!-- 2. EXPORT -->
       <div class="widget">
         <h2>Export Contacts</h2>
         <form action="/contacts/export" method="GET">
@@ -246,6 +252,27 @@
           <button type="submit" class="btn-grey">Export Contacts</button>
         </form>
       </div>
+
+      <!-- 3. CLEAN BAD DATA (NEW) -->
+      <div class="widget" style="border: 1px solid #f87171; background-color: #fff1f2;">
+        <h2 style="color: #991b1b;">⚠️ Clean Bad Data</h2>
+        <p style="font-size: 0.85em; color: #991b1b; margin-bottom: 15px;">
+          Delete only invalid contacts (e.g., 9.18E+11) from bad uploads.
+        </p>
+        <form action="/contacts/clean-bad" method="POST">
+          <div>
+            <label for="companyId-clean" style="color: #991b1b;">Select Company:</label>
+            <select name="companyId" id="companyId-clean" required style="border: 1px solid #f87171;">
+              <option value="">-- Please Select --</option>
+              <% companies.forEach(function(company) { %>
+                <option value="<%= company._id %>"><%= company.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <button type="submit" class="btn-red">Delete Bad Numbers Only</button>
+        </form>
+      </div>
+
     </div>
 
     <h2>Contact List</h2>
