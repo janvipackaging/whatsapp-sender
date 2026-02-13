@@ -120,7 +120,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- SMART TEST MESSAGE (EXACT POWERSHELL MATCH) ---
+// --- SMART TEST MESSAGE (Standard First Strategy) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -141,19 +141,23 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    
-    // Use v19.0 as standard, but v17.0 is also fine.
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
-    // Ensure clean name
-    const tplName = (template.codeName || template.templateName || '').trim();
+    const tplName = (template.codeName || template.templateName || template.name || '').trim();
+    console.log(`[Test] Using Template Name: "${tplName}"`);
 
     // --- HELPER: Send Request ---
     async function attemptSend(mode) {
         let components = [];
 
-        if (mode === 'named') {
-            // MATCHING YOUR POWERSHELL SCRIPT
+        if (mode === 'standard') {
+            // Standard Positional (Default for UI Templates)
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            }];
+        } else if (mode === 'named') {
+            // Named Param (Fallback for API Templates)
             components = [{
                 type: "body",
                 parameters: [{ 
@@ -161,12 +165,6 @@ exports.sendTestMessage = async (req, res) => {
                     text: "Valued Customer",
                     parameter_name: "customer_name" 
                 }]
-            }];
-        } else if (mode === 'standard') {
-            // Standard Positional (Backup)
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
             }];
         } 
         // Mode 'none' sends empty components []
@@ -177,7 +175,7 @@ exports.sendTestMessage = async (req, res) => {
             type: "template",
             template: {
                 name: tplName,
-                language: { code: "en_US" }, // Explicitly US English
+                language: { code: "en_US" }, 
                 components: components
             }
         };
@@ -191,35 +189,35 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE STRATEGY ---
+    // --- EXECUTE STRATEGY (Updated Order) ---
     
-    // 1. Try Named Parameters (Primary)
-    let result = await attemptSend('named');
+    // 1. Try Standard Parameters (Most likely to work for UI templates)
+    let result = await attemptSend('standard');
     if (!result.error) return success(res, targetPhone);
 
-    // Capture the first error - this is usually the real one
-    const firstError = result.error;
-    console.log("Named param failed:", JSON.stringify(firstError));
+    const standardError = result.error;
+    console.log("Standard param failed:", JSON.stringify(standardError));
 
-    // 2. Try Standard Parameters (Fallback)
-    // Only try this if the error wasn't "Template does not exist"
-    if (firstError.code !== 132001) {
-        result = await attemptSend('standard');
+    // 2. Try Named Parameters (Backup, since script used it)
+    // Only try if error wasn't "Template missing"
+    if (standardError.code !== 132001) {
+        result = await attemptSend('named');
         if (!result.error) return success(res, targetPhone);
+        console.log("Named param failed.");
     }
 
-    // 3. Try No Parameters (Last Resort)
-    // Only try this if previous errors were parameter related (#100 or #132000)
-    if (result.error && (result.error.code === 100 || result.error.message.includes('parameter'))) {
+    // 3. Try No Parameters (Last Resort for static templates)
+    // Only if previous errors suggest parameter issues
+    if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
         console.log("Param error detected. Trying No Params...");
         result = await attemptSend('none');
         if (!result.error) return success(res, targetPhone);
     }
 
     // If we get here, everything failed.
-    // SHOW THE FIRST ERROR (Named Param) because that's the one that matches your script.
+    // Report the STANDARD error (Attempt 1) as it's the most common configuration.
     console.error('All Attempts Failed.');
-    req.flash('error_msg', `Meta Error (${firstError.code}): ${firstError.message}`);
+    req.flash('error_msg', `Meta Error (${standardError.code}): ${standardError.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
