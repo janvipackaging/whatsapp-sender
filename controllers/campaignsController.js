@@ -49,7 +49,8 @@ exports.startCampaign = async (req, res) => {
     const template = await Template.findById(templateId);
     if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
     
-    const templateName = template.codeName || template.templateName || template.name; 
+    // Safety check for template name
+    const templateName = (template.codeName || template.templateName || template.name || '').trim();
 
     const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
 
@@ -119,8 +120,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE WATERFALL TEST SENDER ---
-// Tries 3 different payload formats until one works.
+// --- SMART TEST MESSAGE (EXACT POWERSHELL MATCH) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -141,33 +141,35 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
+    
+    // Use v19.0 as standard, but v17.0 is also fine.
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
-    const tplName = template.codeName || template.templateName;
+    
+    // Ensure clean name
+    const tplName = (template.codeName || template.templateName || '').trim();
 
-    // --- HELPER: Send Request with Specific Payload Mode ---
+    // --- HELPER: Send Request ---
     async function attemptSend(mode) {
         let components = [];
 
-        if (mode === 'standard') {
-            // Try 1: Standard Positional Param
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
-            }];
-        } else if (mode === 'named') {
-            // Try 2: Named Param (Matches your PowerShell)
+        if (mode === 'named') {
+            // MATCHING YOUR POWERSHELL SCRIPT
             components = [{
                 type: "body",
                 parameters: [{ 
                     type: "text", 
                     text: "Valued Customer",
-                    parameter_name: "customer_name" // <--- The Magic Key
+                    parameter_name: "customer_name" 
                 }]
             }];
-        } else if (mode === 'none') {
-            // Try 3: No Params
-            components = [];
-        }
+        } else if (mode === 'standard') {
+            // Standard Positional (Backup)
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            }];
+        } 
+        // Mode 'none' sends empty components []
 
         const payload = {
             messaging_product: "whatsapp",
@@ -175,7 +177,7 @@ exports.sendTestMessage = async (req, res) => {
             type: "template",
             template: {
                 name: tplName,
-                language: { code: "en_US" },
+                language: { code: "en_US" }, // Explicitly US English
                 components: components
             }
         };
@@ -189,27 +191,35 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE WATERFALL ---
+    // --- EXECUTE STRATEGY ---
     
-    // 1. Try Named Parameters (Since you confirmed this works in PowerShell)
+    // 1. Try Named Parameters (Primary)
     let result = await attemptSend('named');
     if (!result.error) return success(res, targetPhone);
 
-    console.log("Named param failed. Trying Standard...");
-    
-    // 2. Try Standard Parameters
-    result = await attemptSend('standard');
-    if (!result.error) return success(res, targetPhone);
+    // Capture the first error - this is usually the real one
+    const firstError = result.error;
+    console.log("Named param failed:", JSON.stringify(firstError));
 
-    console.log("Standard param failed. Trying No Params...");
+    // 2. Try Standard Parameters (Fallback)
+    // Only try this if the error wasn't "Template does not exist"
+    if (firstError.code !== 132001) {
+        result = await attemptSend('standard');
+        if (!result.error) return success(res, targetPhone);
+    }
 
-    // 3. Try No Parameters
-    result = await attemptSend('none');
-    if (!result.error) return success(res, targetPhone);
+    // 3. Try No Parameters (Last Resort)
+    // Only try this if previous errors were parameter related (#100 or #132000)
+    if (result.error && (result.error.code === 100 || result.error.message.includes('parameter'))) {
+        console.log("Param error detected. Trying No Params...");
+        result = await attemptSend('none');
+        if (!result.error) return success(res, targetPhone);
+    }
 
-    // If all failed, show the error from the LAST attempt (likely the most relevant)
-    console.error('All Attempts Failed:', JSON.stringify(result.error, null, 2));
-    req.flash('error_msg', `Meta Error: ${result.error.message}`);
+    // If we get here, everything failed.
+    // SHOW THE FIRST ERROR (Named Param) because that's the one that matches your script.
+    console.error('All Attempts Failed.');
+    req.flash('error_msg', `Meta Error (${firstError.code}): ${firstError.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
