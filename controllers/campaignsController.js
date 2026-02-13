@@ -19,9 +19,7 @@ exports.getCampaignPage = async (req, res) => {
     const segments = await Segment.find();
     const templates = await Template.find(); 
 
-    // FIX: Removed explicit req.flash calls here.
-    // The Global Middleware in index.js now handles success_msg/error_msg
-    // to prevent them from being consumed twice (which causes silent failures).
+    // Note: Global middleware in index.js handles flash messages now.
     res.render('campaigns', {
       user: req.user,
       companies: companies,
@@ -46,23 +44,14 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
-    if (!company) {
-      req.flash('error_msg', 'Company not found.');
-      return res.redirect('/campaigns');
-    }
+    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
 
     const template = await Template.findById(templateId);
-    if (!template) {
-      req.flash('error_msg', 'Template not found.');
-      return res.redirect('/campaigns');
-    }
+    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
     
     const templateName = template.codeName || template.templateName || template.name; 
 
-    const segmentContacts = await Contact.find({
-      company: companyId,
-      segments: segmentId
-    });
+    const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
 
     if (segmentContacts.length === 0) {
        req.flash('error_msg', 'No contacts found in this segment for this company.');
@@ -72,14 +61,10 @@ exports.startCampaign = async (req, res) => {
     // --- BLOCKLIST CHECK ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
-    
     let contactsToSend = [];
-    let blockedCount = 0;
-
+    
     segmentContacts.forEach(contact => {
-        if (blockedPhones.has(contact.phone)) {
-            blockedCount++;
-        } else {
+        if (!blockedPhones.has(contact.phone)) {
             contactsToSend.push(contact);
         }
     });
@@ -134,57 +119,68 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- SMART TEST MESSAGE (AUTO-RETRY) ---
+// --- ULTIMATE WATERFALL TEST SENDER ---
+// Tries 3 different payload formats until one works.
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
     const targetPhone = phone || req.body.testPhone;
 
     if (!companyId || !templateId || !targetPhone) {
-      req.flash('error_msg', 'Company, Template, and Test Phone Number are required.');
+      req.flash('error_msg', 'Fields missing.');
       return res.redirect('/campaigns');
     }
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
 
-    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
-    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
+    if (!company || !template) {
+        req.flash('error_msg', 'Company or Template not found.');
+        return res.redirect('/campaigns');
+    }
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
-    
-    const whatsappTemplateName = template.codeName || template.templateName;
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    const tplName = template.codeName || template.templateName;
 
-    // Helper Function: Try sending with specific settings
-    async function trySending(langCode, includeVars) {
+    // --- HELPER: Send Request with Specific Payload Mode ---
+    async function attemptSend(mode) {
+        let components = [];
+
+        if (mode === 'standard') {
+            // Try 1: Standard Positional Param
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            }];
+        } else if (mode === 'named') {
+            // Try 2: Named Param (Matches your PowerShell)
+            components = [{
+                type: "body",
+                parameters: [{ 
+                    type: "text", 
+                    text: "Valued Customer",
+                    parameter_name: "customer_name" // <--- The Magic Key
+                }]
+            }];
+        } else if (mode === 'none') {
+            // Try 3: No Params
+            components = [];
+        }
+
         const payload = {
             messaging_product: "whatsapp",
-            to: targetPhone, 
+            to: targetPhone,
             type: "template",
             template: {
-                name: whatsappTemplateName,
-                language: { code: langCode },
-                components: []
+                name: tplName,
+                language: { code: "en_US" },
+                components: components
             }
         };
 
-        if (includeVars) {
-            payload.template.components.push({
-                type: "body",
-                parameters: [
-                    {
-                        type: "text",
-                        text: "Valued Customer",
-                        parameter_name: "customer_name" // Ensure compatibility with strict templates
-                    }
-                ]
-            });
-        }
-
-        console.log(`[Test] Attempting: Lang=${langCode}, Vars=${includeVars}`);
-        
+        console.log(`Attempting Mode: ${mode}`);
         const response = await fetch(WHATSAPP_API_URL, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -193,47 +189,39 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- ATTEMPT 1: Standard (en_US + WITH Variable) ---
-    let result = await trySending("en_US", true);
+    // --- EXECUTE WATERFALL ---
+    
+    // 1. Try Named Parameters (Since you confirmed this works in PowerShell)
+    let result = await attemptSend('named');
+    if (!result.error) return success(res, targetPhone);
 
-    // --- ERROR HANDLING & RETRY LOGIC ---
-    if (result.error) {
-        console.log(`Attempt 1 Failed: Code ${result.error.code} - ${result.error.message}`);
+    console.log("Named param failed. Trying Standard...");
+    
+    // 2. Try Standard Parameters
+    result = await attemptSend('standard');
+    if (!result.error) return success(res, targetPhone);
 
-        // Error #100: Invalid Parameter 
-        // Error #132000: Number of params does not match (Means template wants 0 vars)
-        if (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter')) {
-            console.log("Param Mismatch Detected. Retrying WITHOUT variables...");
-            result = await trySending("en_US", false);
-        }
-        
-        // Error #132001: Language mismatch
-        else if (result.error.code === 132001 || result.error.message.includes('does not exist')) {
-            console.log("Language Mismatch Detected. Retrying with 'en' + Vars...");
-            result = await trySending("en", true);
-            
-            // If that fails, try 'en' + No Vars
-            if (result.error) {
-                 console.log("Retrying 'en' WITHOUT variables...");
-                 result = await trySending("en", false);
-            }
-        }
-    }
+    console.log("Standard param failed. Trying No Params...");
 
-    // --- FINAL RESULT HANDLING ---
-    if (result.error) {
-      console.error('Final Test Failure:', JSON.stringify(result.error, null, 2));
-      req.flash('error_msg', `Meta Error (${result.error.code}): ${result.error.message}`);
-      return res.redirect('/campaigns');
-    }
+    // 3. Try No Parameters
+    result = await attemptSend('none');
+    if (!result.error) return success(res, targetPhone);
 
-    console.log(`Test message sent successfully to: ${targetPhone}`);
-    req.flash('success_msg', `Test message sent to ${targetPhone} successfully!`);
-    res.redirect('/campaigns');
+    // If all failed, show the error from the LAST attempt (likely the most relevant)
+    console.error('All Attempts Failed:', JSON.stringify(result.error, null, 2));
+    req.flash('error_msg', `Meta Error: ${result.error.message}`);
+    return res.redirect('/campaigns');
 
   } catch (error) {
-    console.error('Error sending test message:', error);
-    req.flash('error_msg', 'An error occurred while sending the test.');
+    console.error('Server Error sending test:', error);
+    req.flash('error_msg', 'Server Error: ' + error.message);
     res.redirect('/campaigns');
   }
 };
+
+// Helper for success response
+function success(res, phone) {
+    console.log(`Message sent successfully to ${phone}`);
+    req.flash('success_msg', `Test message sent to ${phone} successfully!`);
+    res.redirect('/campaigns');
+}
