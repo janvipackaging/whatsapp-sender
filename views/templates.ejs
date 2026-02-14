@@ -127,7 +127,6 @@
 </head>
 <body>
   
-  <!-- UPDATED NAVIGATION BAR (Consistent with Dashboard) -->
   <nav>
     <a href="/" class="brand-logo-container">
         <img src="https://www.janvipackaging.online/images/Janvi-Packaging-Logo" alt="Janvi Packaging Logo" class="logo-img">
@@ -223,7 +222,7 @@
                   </span>
                 </td>
                 <td><%= template.company ? template.company.name : 'N/A' %></td>
-                <td><%= template.variable1 || '-' %></td>
+                <td><%= template.variable1 || (template.variables && template.variables.length > 0 ? template.variables[0].name : '-') %></td>
                 <td>
                   <form action="/templates/delete/<%= template._id %>" method="POST" onsubmit="return confirm('Are you sure?');">
                     <button type="submit" class="btn-delete" style="width: auto;">Delete</button>

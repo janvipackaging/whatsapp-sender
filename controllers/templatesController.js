@@ -2,7 +2,6 @@ const Template = require('../models/Template');
 const Company = require('../models/Company');
 
 // @desc    Show the main template management page
-//          It will show a list of existing templates and a form to add a new one.
 exports.getTemplatesPage = async (req, res) => {
   try {
     // 1. Get all companies (for the dropdown)
@@ -13,12 +12,12 @@ exports.getTemplatesPage = async (req, res) => {
     // 2. Get all existing templates for the user's company/companies
     const templates = await Template.find(companyQuery).populate('company', 'name');
 
-    // 3. Render the new EJS view
+    // 3. Render the view
+    // NOTE: We do NOT call req.flash() here because the global middleware in index.js handles it.
     res.render('templates', {
       companies: companies,
       templates: templates,
-      success_msg: req.flash('success_msg'), // Pass flash messages
-      error_msg: req.flash('error_msg')     // Pass flash messages
+      user: req.user
     });
     
   } catch (error) {
@@ -31,21 +30,30 @@ exports.getTemplatesPage = async (req, res) => {
 // @desc    Handle the form submission to add a new template
 exports.addTemplate = async (req, res) => {
   try {
-    // 1. Get the data from the form
-    const { name, templateName, companyId, variableName } = req.body;
+    // 1. Get the data from the form (MATCHING THE EJS FILE EXACTLY)
+    const { displayName, codeName, companyId, variable1 } = req.body;
 
-    // 2. Prepare the variables array
+    if (!displayName || !codeName || !companyId) {
+        req.flash('error_msg', 'Display Name, WhatsApp Code Name, and Company are required.');
+        return res.redirect('/templates');
+    }
+
+    // 2. Prepare the variables array (Backwards compatibility)
     let variables = [];
-    if (variableName) {
-      variables.push({ name: variableName, type: 'body' });
+    if (variable1) {
+      variables.push({ name: variable1, type: 'body' });
     }
 
     // 3. Create the new template object
+    // We save to MULTIPLE fields to ensure compatibility with all controllers
     const newTemplate = new Template({
-      name: name,
-      templateName: templateName,
+      name: displayName,           // Fallback
+      displayName: displayName,    // Primary
+      templateName: codeName,      // Fallback
+      codeName: codeName,          // Primary
       company: companyId,
-      variables: variables
+      variable1: variable1,        // CRITICAL: This is what campaignsController looks for
+      variables: variables         // Backwards compatibility
     });
 
     // 4. Save it to the database
@@ -66,9 +74,6 @@ exports.addTemplate = async (req, res) => {
   }
 };
 
-// ---
-// --- THIS IS THE NEW FUNCTION ---
-// ---
 // @desc    Handle deleting a template
 exports.deleteTemplate = async (req, res) => {
   try {
