@@ -99,7 +99,14 @@ exports.startCampaign = async (req, res) => {
     const phoneId = company.phoneNumberId || company.numberId;
 
     let jobsAdded = 0;
-    const hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
+    
+    // SMART CHECK: Does this template need a variable?
+    // 1. Check DB 'variable1'
+    // 2. Check if name contains 'calculator' (Hard fix for your specific issue)
+    let hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
+    if (templateName.toLowerCase().includes('calculator')) {
+        hasVariable = true;
+    }
 
     for (const contact of contactsToSend) { 
       const jobData = {
@@ -130,7 +137,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE TEST SENDER (v17.0 + Exhaustive Retry) ---
+// --- ULTIMATE TEST SENDER (v17.0 + Smart Error Reporting) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -156,6 +163,7 @@ exports.sendTestMessage = async (req, res) => {
     const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     
     const tplName = (template.codeName || template.templateName || '').trim();
+    const dbVarName = template.variable1 || 'customer_name'; // Use DB var name or default
     
     // --- HELPER: Send Request ---
     async function attemptSend(mode, lang = "en_US") {
@@ -167,17 +175,7 @@ exports.sendTestMessage = async (req, res) => {
                 parameters: [{ 
                     type: "text", 
                     text: "Valued Customer",
-                    parameter_name: "customer_name" // Explicitly "customer_name"
-                }]
-            }];
-        } else if (mode === 'named_alt') {
-             // Try 'name' just in case the template variable is literally named 'name'
-             components = [{
-                type: "body",
-                parameters: [{ 
-                    type: "text", 
-                    text: "Valued Customer",
-                    parameter_name: "name" 
+                    parameter_name: dbVarName 
                 }]
             }];
         } else if (mode === 'standard') {
@@ -208,34 +206,41 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- STRATEGY: TRY EVERYTHING UNTIL ONE WORKS ---
+    // --- STRATEGY: TRY EVERYTHING ---
     
     // 1. Named Param (Exact PowerShell Match) + en_US
     let result = await attemptSend('named', 'en_US');
     if (!result.error) return success(req, res, targetPhone);
 
-    console.log(`Failed (Named/US): ${result.error.message}. Retrying Standard...`);
+    const firstError = result.error;
+    console.log(`Failed (Named/US): ${firstError.message}`);
 
     // 2. Standard Param + en_US (Common UI Template)
-    result = await attemptSend('standard', 'en_US');
-    if (!result.error) return success(req, res, targetPhone);
+    // Only try if the template actually exists (ignore language errors for now)
+    if (firstError.code !== 132001) {
+        result = await attemptSend('standard', 'en_US');
+        if (!result.error) return success(req, res, targetPhone);
+    }
 
-    // 3. Named Param + en (Language Fallback)
-    console.log(`Failed (Standard/US). Retrying 'en' Named...`);
-    result = await attemptSend('named', 'en');
-    if (!result.error) return success(req, res, targetPhone);
+    // 3. No Params (Only if previous errors suggest param issues like #100 or #132000)
+    if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
+        console.log("Param error detected. Trying No Params...");
+        result = await attemptSend('none', 'en_US');
+        if (!result.error) return success(req, res, targetPhone);
+    }
 
-    // 4. No Params (If template has 0 vars)
-    console.log(`Failed. Retrying No Params...`);
-    result = await attemptSend('none', 'en_US');
-    if (!result.error) return success(req, res, targetPhone);
-
-    // If everything failed, show the error from the FIRST attempt (most likely configuration)
-    // or the last one if it was a parameter mismatch.
-    const finalMsg = result.error ? result.error.message : "Unknown Error";
-    console.error('All Attempts Failed.');
+    // FAILURE: Show the error that matters
+    // If Attempt 3 failed with "Mismatch (#132000)", it means we sent 0 but it wanted 1.
+    // In that case, the REAL error is why Attempt 1/2 failed.
+    // So we show 'firstError' (from Attempt 1) because that used variables.
     
-    req.flash('error_msg', `Meta Error: ${finalMsg}`);
+    let errorToDisplay = result.error;
+    if (result.error.code === 132000) {
+        errorToDisplay = firstError; // Show the named param error instead
+    }
+
+    console.error('All Attempts Failed.');
+    req.flash('error_msg', `Meta Error (${errorToDisplay.code}): ${errorToDisplay.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
