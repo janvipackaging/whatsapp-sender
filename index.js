@@ -1,4 +1,3 @@
-// --- Imports ---
 const path = require('path');
 require('dotenv').config(); 
 const express = require('express');
@@ -6,13 +5,11 @@ const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
-const MongoStore = require('connect-mongo');
+// REMOVED: const MongoStore = require('connect-mongo');
 
-// --- Configs ---
 require('./config/passport')(passport); 
 const { isAuthenticated, isAdmin } = require('./config/auth'); 
 
-// --- MODELS ---
 const Contact = require('./models/Contact'); 
 const Campaign = require('./models/Campaign'); 
 const Message = require('./models/Message'); 
@@ -20,41 +17,30 @@ const Company = require('./models/Company');
 const Segment = require('./models/Segment'); 
 const User = require('./models/User'); 
 
-// --- Initialization ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Connect to Database ---
 connectDB(); 
 
-// --- Middleware ---
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); 
 
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// --- SESSION & PASSPORT MIDDLEWARE ---
+// --- SESSION (Reverted to MemoryStore for stability) ---
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_default_fallback', 
+  secret: process.env.SESSION_SECRET || 'secret', 
   resave: false,
   saveUninitialized: false, 
-  store: MongoStore.create({ 
-    mongoUrl: process.env.MONGO_URI, 
-    collectionName: 'sessions'
-  }),
-  cookie: { 
-    maxAge: 1000 * 60 * 60 * 24 * 15 // 15 DAYS
-  }
+  // removed store: MongoStore... to prevent crash if mongo fails
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-// --- [FIX] GLOBAL VARIABLES MIDDLEWARE ---
-// This prevents "user is not defined" errors on all pages
-// And handles flash messages globally to avoid race conditions
+// GLOBAL MIDDLEWARE (Kept this, it works great)
 app.use((req, res, next) => {
   res.locals.user = req.user || null;
   res.locals.success_msg = req.flash('success_msg');
@@ -62,12 +48,8 @@ app.use((req, res, next) => {
   res.locals.error = req.flash('error');
   next();
 });
-// -----------------------------------------
 
-// --- Routes ---
-
-// @route   GET /
-// @desc    Show the main "True Dashboard" (PROTECTED)
+// Routes
 app.get('/', isAuthenticated, async (req, res) => {
   try {
     const totalContacts = await Contact.countDocuments();
@@ -83,17 +65,13 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
       lastCampaign, companies, segments, pendingUsers
-      // user, success_msg, etc. are now handled by global middleware
     });
-
   } catch (error) {
     console.error("Error loading dashboard:", error);
     res.status(500).send('Error loading dashboard');
   }
 });
 
-
-// --- Protected App Routes ---
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
@@ -101,16 +79,10 @@ app.use('/reports', isAuthenticated, require('./routes/reports'));
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
 app.use('/blocklist', isAuthenticated, require('./routes/blocklist')); 
 app.use('/segments', isAuthenticated, require('./routes/segments'));
-
-// --- ADMIN-ONLY ROUTE ---
 app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
-
-// --- Public/API Routes ---
 app.use('/api', require('./routes/api')); 
 app.use('/users', require('./routes/users'));
 
-
-// --- Start Server ---
 app.listen(PORT, () => {
-  console.log(`Server is running successfully on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });

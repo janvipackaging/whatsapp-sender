@@ -3,218 +3,183 @@ const Company = require('../models/Company');
 const passport = require('passport');
 const bcrypt = require('bcryptjs');
 
-// @desc    Show the login page
+// --- LOGIN & REGISTER ---
 exports.getLoginPage = (req, res) => {
   res.render('login', {
     success_msg: req.flash('success_msg'),
     error_msg: req.flash('error_msg'),
-    error: req.flash('error') 
+    error: req.flash('error')
   });
 };
 
-// @desc    Show the pending approval page
-exports.getPendingPage = (req, res) => {
-  res.render('pending');
+exports.loginHandle = (req, res, next) => {
+  passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/users/login',
+    failureFlash: true
+  })(req, res, next);
 };
 
-
-// @desc    Show the registration page
-// --- UPDATED FOR MULTI-COMPANY ---
 exports.getRegisterPage = async (req, res) => {
-  try {
-    // 1. Fetch ALL companies to show in the dropdown
-    const companies = await Company.find().sort({ name: 1 });
-    if (companies.length === 0) {
-      // This is a critical error, a user cannot register without a company
-      return res.status(500).send(`Error: No companies have been created in the database. Please add a company via MongoDB Compass before registering a user.`);
-    }
-    
-    // 2. Pass all companies to the view
-    res.render('register', {
-      error: null,
-      companies: companies // Pass the full list
-    });
-  } catch (error) {
-    console.error('Error loading register page:', error);
-    res.status(500).send(`Error: ${error.message}`);
-  }
+  const companies = await Company.find({});
+  res.render('register', { companies });
 };
 
-
-// @desc    Handle new user registration
-// --- UPDATED FOR MULTI-COMPANY & VALIDATION ---
-exports.registerUser = async (req, res) => {
+exports.registerHandle = async (req, res) => {
   const { username, password, password2, companyId } = req.body;
-  // Re-fetch companies in case of an error, to re-render the form
-  const companies = await Company.find().sort({ name: 1 }); 
+  let errors = [];
+
+  if (!username || !password || !password2 || !companyId) {
+    errors.push({ msg: 'Please enter all fields' });
+  }
+  if (password !== password2) {
+    errors.push({ msg: 'Passwords do not match' });
+  }
+  if (password.length < 6) {
+    errors.push({ msg: 'Password must be at least 6 characters' });
+  }
+
+  if (errors.length > 0) {
+    const companies = await Company.find({});
+    return res.render('register', { errors, username, password, companies, error: errors[0].msg });
+  }
 
   try {
-    // --- Validation ---
-    if (!username || !password || !password2 || !companyId) {
-      return res.render('register', { error: 'Please fill in all fields', companies: companies });
-    }
-    if (password !== password2) {
-      return res.render('register', { error: 'Passwords do not match', companies: companies });
-    }
-    if (password.length < 6) {
-      return res.render('register', { error: 'Password must be at least 6 characters', companies: companies });
-    }
-    
-    const existingUser = await User.findOne({ username: username });
-    if (existingUser) {
-      return res.render('register', { error: 'That username is already taken', companies: companies });
+    const userExists = await User.findOne({ username: username });
+    if (userExists) {
+      const companies = await Company.find({});
+      return res.render('register', { companies, error_msg: 'Username already exists', username });
     }
 
-    // Determine approval status: ONLY the first user is auto-approved
-    const userCount = await User.countDocuments();
-    const isApproved = userCount === 0; 
-    const userRole = userCount === 0 ? 'admin' : 'user';
-
-    // Create the new user.
     const newUser = new User({
-      username: username,
-      password: password, 
-      company: companyId, // Assign company from the form
-      isApproved: isApproved, // FALSE for subsequent users
-      role: userRole
+      username,
+      password,
+      company: companyId,
+      role: 'user',
+      isApproved: false // Default to pending
     });
 
-    await newUser.save(); 
-
-    if (isApproved) {
-        req.flash('success_msg', 'Super-Admin account created successfully! Please log in.');
-        res.redirect('/users/login');
-    } else {
-        // We don't flash a message here, the pending page *is* the message
-        res.redirect('/users/pending'); // Redirect to pending page
-    }
-
-  } catch (error) {
-    console.error('Error during registration:', error);
-    res.render('register', { error: 'Something went wrong. Please try again.', companies: companies });
-  }
-};
-
-
-// @desc    Admin Approval Action
-exports.approveUser = async (req, res) => {
-    try {
-        const userId = req.params.id;
-        await User.findByIdAndUpdate(userId, { isApproved: true });
-        
-        req.flash('success_msg', 'User approved successfully!');
-        res.redirect('/'); // Go back to the dashboard
-    } catch (error) {
-        console.error('Error approving user:', error);
-        req.flash('error_msg', 'Could not approve user.');
-        res.redirect('/');
-    }
-};
-
-// @desc    Admin Decline Action
-exports.declineUser = async (req, res) => {
-  try {
-      const userId = req.params.id;
-      await User.findByIdAndDelete(userId);
-      
-      req.flash('success_msg', 'User request declined and deleted.');
-      res.redirect('/'); // Go back to the dashboard
-  } catch (error) {
-      console.error('Error declining user:', error);
-      req.flash('error_msg', 'Could not decline user.');
-      res.redirect('/');
-  }
-};
-
-// @desc    Show the Manage Users page
-exports.getManageUsersPage = async (req, res) => {
-  try {
-    const users = await User.find({ _id: { $ne: req.user._id } }) // Find all users *except* self
-      .populate('company', 'name')
-      .sort({ createdAt: -1 });
-
-    res.render('manage-users', {
-      users: users,
-      success_msg: req.flash('success_msg'),
-      error_msg: req.flash('error_msg')
+    // Hash Password
+    bcrypt.genSalt(10, (err, salt) => {
+      bcrypt.hash(newUser.password, salt, async (err, hash) => {
+        if (err) throw err;
+        newUser.password = hash;
+        await newUser.save();
+        res.render('pending'); // Redirect to pending page
+      });
     });
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).send('Error loading page');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/users/register');
   }
 };
 
-// @desc    Revoke or Grant permission for an existing user
-exports.toggleUserApproval = async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      req.flash('error_msg', 'User not found.');
-      return res.redirect('/users/manage');
-    }
-    
-    // Flip the approval status
-    user.isApproved = !user.isApproved;
-    await user.save();
-    
-    req.flash('success_msg', `User ${user.username} has been ${user.isApproved ? 'Enabled' : 'Disabled'}.`);
-    res.redirect('/users/manage');
-
-  } catch (error) {
-    console.error('Error toggling user approval:', error);
-    req.flash('error_msg', 'Could not update user status.');
-    res.redirect('/users/manage');
-  }
-};
-
-
-// @desc    Show the profile/password change page
-exports.getProfilePage = (req, res) => {
-  res.render('profile', {
-    user: req.user, 
-    success_msg: req.flash('success_msg'),
-    error_msg: req.flash('error_msg')
-  });
-};
-
-// @desc    Handle updating the password
-exports.updatePassword = async (req, res) => {
-  const { oldPassword, newPassword, newPassword2 } = req.body;
-  const user = await User.findById(req.user.id);
-
-  if (newPassword !== newPassword2) {
-    req.flash('error_msg', 'New passwords do not match.');
-    return res.redirect('/users/profile');
-  }
-  if (newPassword.length < 6) {
-    req.flash('error_msg', 'New password must be at least 6 characters.');
-    return res.redirect('/users/profile');
-  }
-
-  const isMatch = await user.matchPassword(oldPassword);
-  if (!isMatch) {
-    req.flash('error_msg', 'Old password incorrect.');
-    return res.redirect('/users/profile');
-  }
-  
-  user.password = newPassword;
-  await user.save();
-  
-  req.flash('success_msg', 'Password updated successfully. Please log in again.');
-  req.logout((err) => { 
-    if (err) { return next(err); }
-    res.redirect('/users/login');
-  });
-};
-
-
-// @desc    Handle user logout
-exports.logoutUser = (req, res, next) => {
-  req.logout(function(err) {
+exports.logoutHandle = (req, res, next) => {
+  req.logout((err) => {
     if (err) { return next(err); }
     req.flash('success_msg', 'You are logged out');
     res.redirect('/users/login');
   });
+};
+
+// --- PROFILE ---
+exports.getProfilePage = (req, res) => {
+  res.render('profile', { user: req.user });
+};
+
+exports.updatePassword = async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  if(newPassword !== confirmPassword) {
+      req.flash('error_msg', 'New passwords do not match');
+      return res.redirect('/users/profile');
+  }
+  try {
+      const user = await User.findById(req.user._id);
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if(!isMatch) {
+          req.flash('error_msg', 'Current password is incorrect');
+          return res.redirect('/users/profile');
+      }
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(newPassword, salt);
+      await user.save();
+      req.flash('success_msg', 'Password updated successfully');
+      res.redirect('/users/profile');
+  } catch (err) {
+      console.error(err);
+      req.flash('error_msg', 'Error updating password');
+      res.redirect('/users/profile');
+  }
+};
+
+// --- ADMIN MANAGEMENT FUNCTIONS (These were missing!) ---
+
+exports.getManageUsersPage = async (req, res) => {
+  try {
+    const users = await User.find({}).populate('company');
+    const companies = await Company.find({});
+    res.render('manage-users', { users, companies, user: req.user });
+  } catch (err) {
+    console.error(err);
+    res.redirect('/');
+  }
+};
+
+exports.addUser = async (req, res) => {
+  // Admin add user logic
+  const { username, email, password, companyId, role } = req.body;
+  try {
+      const newUser = new User({
+          username, email, password, company: companyId, role, isApproved: true
+      });
+      const salt = await bcrypt.genSalt(10);
+      newUser.password = await bcrypt.hash(password, salt);
+      await newUser.save();
+      req.flash('success_msg', 'User added successfully');
+      res.redirect('/users/manage');
+  } catch(err) {
+      console.error(err);
+      req.flash('error_msg', 'Error adding user');
+      res.redirect('/users/manage');
+  }
+};
+
+exports.toggleUserStatus = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        user.isApproved = !user.isApproved;
+        await user.save();
+        req.flash('success_msg', `User ${user.username} is now ${user.isApproved ? 'Active' : 'Disabled'}`);
+        res.redirect('/users/manage');
+    } catch (err) {
+        console.error(err);
+        res.redirect('/users/manage');
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        req.flash('success_msg', 'User deleted');
+        res.redirect('/users/manage');
+    } catch (err) {
+        console.error(err);
+        res.redirect('/users/manage');
+    }
+};
+
+exports.approveUser = async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.params.id, { isApproved: true });
+        req.flash('success_msg', 'User Approved');
+        res.redirect('/');
+    } catch (err) { res.redirect('/'); }
+};
+
+exports.declineUser = async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        req.flash('success_msg', 'User Declined and Removed');
+        res.redirect('/');
+    } catch (err) { res.redirect('/'); }
 };
