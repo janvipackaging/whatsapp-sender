@@ -19,7 +19,7 @@ exports.getCampaignPage = async (req, res) => {
     const segments = await Segment.find();
     const templates = await Template.find(); 
 
-    // Note: Global middleware in index.js handles flash messages now.
+    // Global middleware in index.js handles flash messages.
     res.render('campaigns', {
       user: req.user,
       companies: companies,
@@ -44,18 +44,18 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
-    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
-
     const template = await Template.findById(templateId);
+
+    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
     if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
     
-    // Safety check for template name
+    // Clean Template Name
     const templateName = (template.codeName || template.templateName || template.name || '').trim();
 
     const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
 
     if (segmentContacts.length === 0) {
-       req.flash('error_msg', 'No contacts found in this segment for this company.');
+       req.flash('error_msg', 'No contacts found in this segment.');
        return res.redirect('/campaigns');
     }
     
@@ -91,6 +91,9 @@ exports.startCampaign = async (req, res) => {
 
     let jobsAdded = 0;
     
+    // Check if we should send variables based on DB
+    const hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
+
     for (const contact of contactsToSend) { 
       const jobData = {
         contact: contact,
@@ -98,7 +101,7 @@ exports.startCampaign = async (req, res) => {
         companyToken: token,
         companyNumberId: phoneId,
         campaignId: newCampaign._id,
-        variableValue: contact.name || 'Customer' 
+        variableValue: hasVariable ? (contact.name || 'Customer') : null
       };
 
       await qstashClient.publishJSON({
@@ -120,7 +123,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- SMART TEST MESSAGE (Standard First Strategy) ---
+// --- SMART TEST MESSAGE (Fixed Success Handler) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -143,31 +146,33 @@ exports.sendTestMessage = async (req, res) => {
     const phoneId = company.phoneNumberId || company.numberId;
     const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
-    const tplName = (template.codeName || template.templateName || template.name || '').trim();
-    console.log(`[Test] Using Template Name: "${tplName}"`);
+    const tplName = (template.codeName || template.templateName || '').trim();
+    
+    // Default variable name if missing
+    const varName = template.variable1 || "customer_name";
 
     // --- HELPER: Send Request ---
     async function attemptSend(mode) {
         let components = [];
 
-        if (mode === 'standard') {
-            // Standard Positional (Default for UI Templates)
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
-            }];
-        } else if (mode === 'named') {
-            // Named Param (Fallback for API Templates)
+        if (mode === 'named') {
+            // MATCHING YOUR POWERSHELL SCRIPT EXACTLY (Priority 1)
             components = [{
                 type: "body",
                 parameters: [{ 
                     type: "text", 
                     text: "Valued Customer",
-                    parameter_name: "customer_name" 
+                    parameter_name: varName 
                 }]
             }];
+        } else if (mode === 'standard') {
+            // Standard Positional (Priority 2)
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            }];
         } 
-        // Mode 'none' sends empty components []
+        // Mode 'none' sends empty components (Priority 3)
 
         const payload = {
             messaging_product: "whatsapp",
@@ -189,35 +194,32 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE STRATEGY (Updated Order) ---
+    // --- EXECUTE STRATEGY ---
     
-    // 1. Try Standard Parameters (Most likely to work for UI templates)
-    let result = await attemptSend('standard');
-    if (!result.error) return success(res, targetPhone);
+    // 1. Try Named Parameters
+    let result = await attemptSend('named');
+    if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
 
-    const standardError = result.error;
-    console.log("Standard param failed:", JSON.stringify(standardError));
+    const namedError = result.error;
+    console.log("Named param failed:", JSON.stringify(namedError));
 
-    // 2. Try Named Parameters (Backup, since script used it)
-    // Only try if error wasn't "Template missing"
-    if (standardError.code !== 132001) {
-        result = await attemptSend('named');
-        if (!result.error) return success(res, targetPhone);
-        console.log("Named param failed.");
+    // 2. Try Standard Parameters
+    // Don't retry if template doesn't exist (#132001)
+    if (namedError.code !== 132001) { 
+        result = await attemptSend('standard');
+        if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
     }
 
-    // 3. Try No Parameters (Last Resort for static templates)
-    // Only if previous errors suggest parameter issues
+    // 3. Try No Parameters
     if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
         console.log("Param error detected. Trying No Params...");
         result = await attemptSend('none');
-        if (!result.error) return success(res, targetPhone);
+        if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
     }
 
-    // If we get here, everything failed.
-    // Report the STANDARD error (Attempt 1) as it's the most common configuration.
+    // If we get here, show the first error (Named Param) as it's the most descriptive
     console.error('All Attempts Failed.');
-    req.flash('error_msg', `Meta Error (${standardError.code}): ${standardError.message}`);
+    req.flash('error_msg', `Meta Error (${namedError.code}): ${namedError.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
@@ -227,8 +229,8 @@ exports.sendTestMessage = async (req, res) => {
   }
 };
 
-// Helper for success response
-function success(res, phone) {
+// Helper for success response (FIXED SIGNATURE)
+function success(req, res, phone) {
     console.log(`Message sent successfully to ${phone}`);
     req.flash('success_msg', `Test message sent to ${phone} successfully!`);
     res.redirect('/campaigns');
