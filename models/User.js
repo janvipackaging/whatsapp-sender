@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs'); // Required for password comparison
 
 const UserSchema = new mongoose.Schema({
   username: {
@@ -8,7 +9,7 @@ const UserSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: false // Optional
+    required: false
   },
   password: {
     type: String,
@@ -19,7 +20,6 @@ const UserSchema = new mongoose.Schema({
     ref: 'Company',
     required: true
   },
-  // New fields for Admin/Approval logic
   role: {
     type: String,
     enum: ['user', 'admin'],
@@ -27,12 +27,18 @@ const UserSchema = new mongoose.Schema({
   },
   isApproved: {
     type: Boolean,
-    default: false // Users must be approved by admin
+    default: false
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+// --- FIX: Add matchPassword method ---
+// This compares the entered password with the hashed password in DB
+UserSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 module.exports = mongoose.model('User', UserSchema);

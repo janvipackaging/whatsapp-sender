@@ -1,47 +1,46 @@
 const LocalStrategy = require('passport-local').Strategy;
-const User = require('../models/User'); 
+const mongoose = require('mongoose');
+const User = require('../models/User');
 
 module.exports = function(passport) {
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        // 1. Find the user
-        const user = await User.findOne({ username: username });
+    new LocalStrategy({ usernameField: 'username' }, (username, password, done) => {
+      // 1. Match User
+      User.findOne({
+        username: username
+      }).then(user => {
         if (!user) {
           return done(null, false, { message: 'That username is not registered' });
         }
 
-        // 2. Check password
-        const isMatch = await user.matchPassword(password);
-        if (!isMatch) {
-          return done(null, false, { message: 'Password incorrect' });
+        // 2. Check Approval Status
+        if (user.isApproved === false) {
+            return done(null, false, { message: 'Account pending approval. Please contact admin.' });
         }
 
-        // 3. FINAL SECURITY CHECK: Check the user's approval status
-        if (!user.isApproved) { // <-- This is the core check
-            return done(null, false, { message: 'Your account is still pending Admin approval.' });
-        }
-
-        // 4. Success! User is approved and password is correct.
-        return done(null, user);
-      } catch (err) {
-        console.error(err);
-        return done(err);
-      }
+        // 3. Match Password
+        // This relies on the method we just added to models/User.js
+        user.matchPassword(password).then(isMatch => {
+            if (isMatch) {
+                return done(null, user);
+            } else {
+                return done(null, false, { message: 'Password incorrect' });
+            }
+        }).catch(err => {
+            console.error(err);
+            return done(err);
+        });
+      });
     })
   );
 
-  // Saves user ID to the session
-  passport.serializeUser((user, done) => {
+  passport.serializeUser(function(user, done) {
     done(null, user.id);
   });
 
-  // CRITICAL FIX: Ensure the user document is reloaded from the database
-  passport.deserializeUser(async (id, done) => {
+  passport.deserializeUser(async function(id, done) {
     try {
-      // We force Mongoose to fetch the fresh user data every time the session is accessed
-      // The issue is likely here: the system needs the full user object to pass the middleware check.
-      const user = await User.findById(id).lean(); 
+      const user = await User.findById(id);
       done(null, user);
     } catch (err) {
       done(err, null);
