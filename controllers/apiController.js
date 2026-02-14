@@ -6,11 +6,11 @@ const Contact = require('../models/Contact');
 
 /**
  * @desc    Background worker that actually sends the WhatsApp message
- * @route   POST /api/send-message
+ * @route   POST /api/send-message (Public Route)
  */
 exports.sendMessageWorker = async (req, res) => {
   try {
-    // 1. Get the job data from the request body
+    // 1. Get the job data sent from campaignsController
     const { 
       contact, 
       templateName, 
@@ -22,8 +22,8 @@ exports.sendMessageWorker = async (req, res) => {
       apiVersion 
     } = req.body;
 
-    // --- 2. DUPLICATE CHECK (Safety Feature) ---
-    // Check if this message was already successfully sent for this campaign
+    // --- 2. DUPLICATE CHECK (Your Safety Lock) ---
+    // If a message was already recorded for this contact in this campaign, stop.
     if (campaignId && contact) {
       const existingMessage = await Message.findOne({
         contact: contact._id,
@@ -31,17 +31,17 @@ exports.sendMessageWorker = async (req, res) => {
       }).lean();
 
       if (existingMessage && existingMessage.status !== 'failed') {
-        console.log(`Duplicate job skipped: Contact ${contact.phone}`);
+        console.log(`Duplicate detected for ${contact.phone}. Skipping.`);
         return res.status(200).json({ success: true, message: "Duplicate skipped" });
       }
     }
 
-    // --- 3. BUILD WHATSAPP API URL ---
-    // Force v17.0 to match your working configuration
+    // --- 3. BUILD API URL ---
+    // Forces the version (v17.0) passed by the campaign controller
     const version = apiVersion || "v17.0";
     const WHATSAPP_API_URL = `https://graph.facebook.com/${version}/${companyNumberId}/messages`;
 
-    // --- 4. BUILD THE SMART PAYLOAD ---
+    // --- 4. CONSTRUCT THE SMART PAYLOAD ---
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
@@ -56,7 +56,7 @@ exports.sendMessageWorker = async (req, res) => {
               {
                 type: "text",
                 text: variableValue || "Valued Customer",
-                // Matches the parameter name (e.g., 'name') in Meta Manager
+                // Matches the parameter name required by your template (e.g., 'name')
                 parameter_name: variableName || "name" 
               }
             ]
@@ -65,7 +65,7 @@ exports.sendMessageWorker = async (req, res) => {
       }
     };
 
-    // --- 5. SEND TO WHATSAPP API ---
+    // --- 5. EXECUTE SEND ---
     const response = await fetch(WHATSAPP_API_URL, {
       method: 'POST',
       headers: {
@@ -77,50 +77,52 @@ exports.sendMessageWorker = async (req, res) => {
 
     const result = await response.json();
 
-    // --- 6. HANDLE API ERRORS ---
+    // --- 6. HANDLE FAILURES ---
     if (!response.ok) {
-      console.error('Meta API Error:', JSON.stringify(result.error, null, 2));
+      console.error(`Meta API Rejection for ${contact.phone}:`, result.error?.message);
       
       if (campaignId) {
-        // Log the failure
+        // Log the failed attempt in the messages collection
         await Message.create({
           company: contact.company,
           contact: contact._id,
           campaign: campaignId,
           status: 'failed',
-          body: `Meta Error: ${result.error?.message || 'Unknown rejection'}`,
-          direction: 'outbound'
+          direction: 'outbound',
+          body: `Meta Error: ${result.error?.message || 'Rejected'}`
         });
         
-        // Increment Failed count in Campaign
+        // Update the Campaign Failed Count
         await Campaign.findByIdAndUpdate(campaignId, { $inc: { failedCount: 1 } });
       }
       
-      // Return 200 to QStash to acknowledge receipt and prevent infinite retries
+      // Return 200 to acknowledge the job so the worker doesn't retry invalid data
       return res.status(200).json({ success: false, error: result.error?.message });
     }
 
     // --- 7. HANDLE SUCCESS ---
     const messageId = result.messages[0].id; // The 'wamid'
-    console.log(`Successfully sent to: ${contact.phone}`);
 
     if (campaignId) {
       // Create the outbound message log
-      const newMessage = new Message({
+      await Message.create({
+        company: contact.company,
         contact: contact._id,
         campaign: campaignId,
         waMessageId: messageId,
-        direction: 'outbound',
         status: 'sent',
+        direction: 'outbound',
         body: `Template: ${templateName}`
       });
-      await newMessage.save();
       
-      // Increment successful Sent count in Campaign
-      await Campaign.findByIdAndUpdate(campaignId, { $inc: { sentCount: 1 } });
+      // Update Campaign Stats (Immediate feedback)
+      // Note: We increment deliveredCount here as 'sent' from Meta usually implies delivery to server
+      await Campaign.findByIdAndUpdate(campaignId, { 
+        $inc: { sentCount: 1, deliveredCount: 1 } 
+      });
     }
 
-    res.status(200).json({ success: true, messageId: messageId });
+    res.status(200).json({ success: true, messageId });
 
   } catch (error) {
     console.error('Worker Server Error:', error.message);
@@ -128,38 +130,62 @@ exports.sendMessageWorker = async (req, res) => {
   }
 };
 
-
-// --- WEBHOOK LOGIC: Verify Webhook ---
+/**
+ * @desc    Verify Webhook for Meta Integration
+ */
 exports.verifyWebhook = (req, res) => {
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-
-  if (mode && token === verifyToken) {
-    res.status(200).send(challenge);
+  if (req.query["hub.mode"] === "subscribe" && req.query["hub.verify_token"] === verifyToken) {
+    res.status(200).send(req.query["hub.challenge"]);
   } else {
     res.sendStatus(403);
   }
 };
 
-
-// --- WEBHOOK LOGIC: Handle Events (Status Updates & Replies) ---
+/**
+ * @desc    Handle incoming Webhook events (Status Updates & Replies)
+ */
 exports.handleWebhook = async (req, res) => {
   try {
     const body = req.body;
     if (body.object === "whatsapp_business_account") {
-      if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value) {
-        const value = body.entry[0].changes[0].value;
+      const entry = body.entry?.[0];
+      const change = entry?.changes?.[0];
+      const value = change?.value;
 
-        // Case A: Status Updates (Sent -> Delivered -> Read)
-        if (value.statuses && value.statuses.length > 0) {
-          await updateCampaignStatus(value.statuses[0]);
+      // --- Case 1: Tracking (Delivered/Read) ---
+      if (value?.statuses && value.statuses.length > 0) {
+        const statusUpdate = value.statuses[0];
+        const wamid = statusUpdate.id;
+        const newStatus = statusUpdate.status;
+
+        const message = await Message.findOne({ waMessageId: wamid });
+        if (message && message.campaign) {
+          // If message is read, update the campaign report
+          if (newStatus === 'read' && message.status !== 'read') {
+            message.status = 'read';
+            await message.save();
+            await Campaign.findByIdAndUpdate(message.campaign, { $inc: { readCount: 1 } });
+          }
         }
+      }
 
-        // Case B: Incoming Messages (Replies)
-        if (value.messages && value.messages.length > 0) {
-          await saveIncomingMessage(value.metadata.phone_number_id, value.messages[0]);
+      // --- Case 2: Inbound Replies ---
+      if (value?.messages && value.messages.length > 0) {
+        const message = value.messages[0];
+        const company = await Company.findOne({ numberId: value.metadata.phone_number_id });
+        if (company) {
+          const contact = await Contact.findOne({ phone: message.from, company: company._id });
+          if (contact) {
+            await Message.create({
+              company: company._id,
+              contact: contact._id,
+              waMessageId: message.id,
+              body: message.text?.body || "[Non-text message]",
+              direction: 'inbound',
+              isRead: false
+            });
+          }
         }
       }
       res.status(200).send("EVENT_RECEIVED");
@@ -167,63 +193,7 @@ exports.handleWebhook = async (req, res) => {
       res.sendStatus(404);
     }
   } catch (err) {
-    console.error("Webhook Handler Error:", err.message);
-    res.status(200).send("EVENT_RECEIVED"); // Meta expects 200
+    console.error("Webhook Error:", err.message);
+    res.status(200).send("EVENT_RECEIVED");
   }
 };
-
-
-// --- HELPER: Save Inbound Replies ---
-async function saveIncomingMessage(phoneId, message) {
-  try {
-    const company = await Company.findOne({ numberId: phoneId });
-    if (!company) return;
-
-    const contact = await Contact.findOne({ phone: message.from, company: company._id });
-    if (!contact) return;
-
-    const existingMessage = await Message.findOne({ waMessageId: message.id });
-    if (existingMessage) return;
-    
-    await Message.create({
-      company: company._id,
-      contact: contact._id,
-      waMessageId: message.id,
-      body: message.text?.body || "[Non-text message]",
-      direction: 'inbound',
-      isRead: false 
-    });
-    console.log(`New reply saved from ${message.from}`);
-  } catch (error) {
-    console.error("Error saving incoming message:", error);
-  }
-}
-
-
-// --- HELPER: Real-time Analytics Tracking ---
-async function updateCampaignStatus(statusUpdate) {
-  try {
-    const wamid = statusUpdate.id;
-    const status = statusUpdate.status; 
-
-    const message = await Message.findOne({ waMessageId: wamid });
-    if (!message || !message.campaign) return;
-    
-    const oldStatus = message.status;
-
-    // Status logic: Only update if the new status is a step forward
-    if (oldStatus === 'sent' && (status === 'delivered' || status === 'read')) {
-      message.status = status;
-      await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
-    }
-
-    if (oldStatus === 'delivered' && status === 'read') {
-      message.status = status;
-      await Campaign.findByIdAndUpdate(message.campaign, { $inc: { readCount: 1 } });
-    }
-
-    await message.save();
-  } catch (error) {
-    console.error("Error updating campaign status:", error);
-  }
-}
