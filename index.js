@@ -5,7 +5,7 @@ const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
-// REMOVED: const MongoStore = require('connect-mongo'); // Removed to fix 500 Error
+const MongoStore = require('connect-mongo'); // REQUIRED for Vercel
 
 require('./config/passport')(passport); 
 const { isAuthenticated, isAdmin } = require('./config/auth'); 
@@ -20,10 +20,7 @@ const User = require('./models/User');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connect Database
-connectDB(); 
-
-// Vercel Proxy Setting
+// Trust Proxy for Vercel (Critical for Cookies)
 app.set('trust proxy', 1);
 
 app.use(express.urlencoded({ extended: false }));
@@ -32,15 +29,21 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// --- SAFE SESSION SETUP (MemoryStore) ---
+// --- ROBUST SESSION SETUP ---
+// We use MongoStore. If this fails, the app will crash intentionally 
+// because MemoryStore cannot work on Vercel (you will get logged out instantly).
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'janvi_secret_key', 
+  secret: process.env.SESSION_SECRET || 'janvi_secret_key_secure', 
   resave: false,
   saveUninitialized: false,
-  // store: MongoStore... (Removed to prevent crash)
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI, 
+    collectionName: 'sessions',
+    ttl: 14 * 24 * 60 * 60 // 14 days
+  }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // true on Vercel
-    maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    secure: process.env.NODE_ENV === 'production', // Must be true on Vercel https
+    maxAge: 1000 * 60 * 60 * 24 * 14 // 14 days
   }
 }));
 
@@ -60,33 +63,35 @@ app.use((req, res, next) => {
 // --- DASHBOARD ROUTE ---
 app.get('/', isAuthenticated, async (req, res) => {
   try {
-    const totalContacts = await Contact.countDocuments();
-    const totalCampaigns = await Campaign.countDocuments();
-    const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
+    // Wrap queries in Promise.all for speed and error handling
+    const [totalContacts, totalCampaigns, totalUnread] = await Promise.all([
+        Contact.countDocuments(),
+        Campaign.countDocuments(),
+        Message.countDocuments({ isRead: false, direction: 'inbound' })
+    ]);
+    
+    // Fetch lists separately to avoid partial failures
+    const companies = await Company.find().lean();
+    const segments = await Segment.find().lean();
+    const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 }).lean();
     
     const recentMessages = await Message.find({ isRead: false, direction: 'inbound' })
-      .sort({ createdAt: -1 }).limit(3).populate('contact', 'name phone');
-      
-    const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 });
-    const companies = await Company.find();
-    const segments = await Segment.find();
-    
-    // Safety check for pending users query
+      .sort({ createdAt: -1 }).limit(3).populate('contact', 'name phone').lean();
+
+    // Pending users check
     let pendingUsers = [];
-    try {
-        pendingUsers = await User.find({ isApproved: false }).populate('company', 'name'); 
-    } catch (e) {
-        console.log("User model might be outdated, skipping pending users query.");
+    if (req.user.role === 'admin') {
+        pendingUsers = await User.find({ isApproved: false }).populate('company', 'name').lean();
     }
 
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
       lastCampaign, companies, segments, pendingUsers
     });
+
   } catch (error) {
-    console.error("Dashboard Error:", error);
-    // Instead of crashing, send a basic error message
-    res.status(500).send('Error loading dashboard. Please check logs.');
+    console.error("Dashboard Load Error:", error);
+    res.status(500).send(`Error loading dashboard: ${error.message}`);
   }
 });
 
@@ -100,10 +105,13 @@ app.use('/blocklist', isAuthenticated, require('./routes/blocklist'));
 app.use('/segments', isAuthenticated, require('./routes/segments'));
 app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
 app.use('/users', require('./routes/users'));
-
-// API ROUTE
 app.use('/api', require('./routes/api')); 
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// --- SERVER STARTUP (Wait for DB) ---
+connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+}).catch(err => {
+    console.error("Failed to connect to DB, server not started:", err);
 });
