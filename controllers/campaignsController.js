@@ -95,7 +95,12 @@ exports.startCampaign = async (req, res) => {
     });
     await newCampaign.save();
 
-    const destinationUrl = "https://whatsapp-sender-iota.vercel.app/api/send-message";
+    // --- FIX: Dynamic Destination URL ---
+    // Automatically detects if you are on localhost, vercel.app, or your custom domain
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.get('host');
+    const destinationUrl = `${protocol}://${host}/api/send-message`;
+    
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
 
@@ -104,14 +109,14 @@ exports.startCampaign = async (req, res) => {
     if (tplName.toLowerCase().includes('calculator')) varKey = "name";
 
     // 5. QSTASH BATCHING (The Fix for 1,400 contacts)
-    // We send 100 messages to QStash in a single HTTP request.
     const batchSize = 100;
     for (let i = 0; i < contactsToSend.length; i += batchSize) {
       const batch = contactsToSend.slice(i, i + batchSize);
       
       const qstashMessages = batch.map(contact => ({
         url: destinationUrl,
-        body: JSON.stringify({
+        // Pass body as an object - the SDK handles stringification automatically
+        body: {
           contact: { ...contact, phone: cleanPhoneForMeta(contact.phone) },
           templateName: tplName, 
           companyToken: token,
@@ -120,7 +125,7 @@ exports.startCampaign = async (req, res) => {
           variableValue: contact.name || 'Customer',
           variableName: varKey,
           apiVersion: "v17.0"
-        }),
+        },
         retries: 3
       }));
 
@@ -133,7 +138,8 @@ exports.startCampaign = async (req, res) => {
 
   } catch (error) {
     console.error('CRITICAL CAMPAIGN START ERROR:', error);
-    req.flash('error_msg', 'Server Error starting campaign. High-speed queueing failed. Check logs.');
+    // Show actual error message for better debugging
+    req.flash('error_msg', `Campaign Start Failed: ${error.message || 'Check QStash Token and Logs'}`);
     res.redirect('/campaigns');
   }
 };
