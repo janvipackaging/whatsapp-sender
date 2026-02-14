@@ -44,10 +44,16 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
-    const template = await Template.findById(templateId);
+    if (!company) {
+      req.flash('error_msg', 'Company not found.');
+      return res.redirect('/campaigns');
+    }
 
-    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
-    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
+    const template = await Template.findById(templateId);
+    if (!template) {
+      req.flash('error_msg', 'Template not found.');
+      return res.redirect('/campaigns');
+    }
     
     // Safety check for template name
     const templateName = (template.codeName || template.templateName || template.name || '').trim();
@@ -125,7 +131,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE TEST SENDER (Sanitizes Phone Numbers) ---
+// --- ULTIMATE TEST SENDER (Matches PowerShell Configuration) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -136,9 +142,10 @@ exports.sendTestMessage = async (req, res) => {
       return res.redirect('/campaigns');
     }
 
-    // --- FIX 1: Clean the Phone Number ---
-    // Meta rejects numbers with '+' or spaces in the API call
+    // --- FIX 1: Clean Phone Number ---
     targetPhone = targetPhone.replace(/[^0-9]/g, '');
+    // Optional: If length is 10, assume India (+91) - remove this if you send international
+    if (targetPhone.length === 10) targetPhone = '91' + targetPhone;
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
@@ -150,7 +157,9 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    
+    // --- FIX 2: Use API v17.0 (Matches your Working Script) ---
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     
     const tplName = (template.codeName || template.templateName || template.name || '').trim();
     const dbVarName = template.variable1 || 'customer_name'; 
@@ -159,12 +168,8 @@ exports.sendTestMessage = async (req, res) => {
     async function attemptSend(mode, lang = "en_US") {
         let components = [];
 
-        if (mode === 'standard') {
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
-            }];
-        } else if (mode === 'named') {
+        if (mode === 'named') {
+            // Priority 1: Named Parameter (Matches Script)
             components = [{
                 type: "body",
                 parameters: [{ 
@@ -172,6 +177,12 @@ exports.sendTestMessage = async (req, res) => {
                     text: "Valued Customer",
                     parameter_name: dbVarName 
                 }]
+            }];
+        } else if (mode === 'standard') {
+            // Priority 2: Standard Positional
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
             }];
         } 
         // Mode 'none' sends empty components
@@ -198,35 +209,34 @@ exports.sendTestMessage = async (req, res) => {
 
     // --- EXECUTE STRATEGY ---
     
-    // 1. Try Standard (Most Common)
-    let result = await attemptSend('standard', 'en_US');
+    // 1. Try Named Parameters (Primary - Matches Script)
+    let result = await attemptSend('named', 'en_US');
     if (!result.error) return success(req, res, targetPhone);
 
     const firstError = result.error;
-    console.log(`Failed (Standard/US): ${firstError.message}`);
+    console.log(`Failed (Named/US): ${firstError.message}`);
 
-    // 2. Try Named (Backup)
+    // 2. Try Standard Parameters (Fallback)
     if (firstError.code !== 132001) {
-        result = await attemptSend('named', 'en_US');
+        result = await attemptSend('standard', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
     }
 
     // 3. Try No Params (Last Resort)
-    // If previous error was about params, try without any
     if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
         console.log("Param error detected. Trying No Params...");
         result = await attemptSend('none', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
     }
 
-    // 4. Try Generic English (Last Last Resort)
+    // 4. Try Generic English (Language Fallback)
     if (result.error && result.error.code === 132001) {
          console.log("Language error. Trying 'en'...");
-         result = await attemptSend('standard', 'en');
+         result = await attemptSend('named', 'en');
          if (!result.error) return success(req, res, targetPhone);
     }
 
-    // If we get here, show the first error as it's the most likely real issue
+    // If we get here, show the first error (Named Param) as it's the target configuration
     console.error('All Attempts Failed.');
     req.flash('error_msg', `Meta Error (${firstError.code}): ${firstError.message}`);
     return res.redirect('/campaigns');
