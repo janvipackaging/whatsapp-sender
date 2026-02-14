@@ -36,4 +36,4 @@ exports.removeFromBlocklist = async (req, res) => {
     console.error(err);
     res.redirect('/blocklist');
   }
-};
+};  
