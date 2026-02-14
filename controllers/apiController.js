@@ -4,13 +4,15 @@ const Message = require('../models/Message');
 const Company = require('../models/Company');
 const Contact = require('../models/Contact');
 
-// @desc    This is the function our /api/send-message route will run
-exports.sendMessage = async (req, res) => {
+// @desc    Background worker that actually sends the WhatsApp message
+// UPDATED: Now uses v17.0 and Named Parameters to match your working script
+exports.sendMessageWorker = async (req, res) => {
   try {
     // 1. Get the job data
-    const { contact, templateName, companyToken, companyNumberId, campaignId } = req.body;
+    // We now accept 'variableName' and 'apiVersion' from the campaign controller
+    const { contact, templateName, companyToken, companyNumberId, campaignId, variableValue, variableName, apiVersion } = req.body;
 
-    // --- 1b. NEW: DUPLICATE CHECK (Your 100% Safety Feature) ---
+    // --- DUPLICATE CHECK ---
     // Check if this message has already been sent for this campaign
     if (campaignId && contact) {
         const existingMessage = await Message.findOne({
@@ -19,18 +21,17 @@ exports.sendMessage = async (req, res) => {
         });
         
         if (existingMessage) {
-            // This is a duplicate job from QStash.
-            console.log(`Duplicate job skipped: Contact ${contact.phone} for Campaign ${campaignId}.`);
-            // Send 200 OK to QStash to delete the duplicate job
+            console.log(`Duplicate job skipped: Contact ${contact.phone}`);
             return res.status(200).json({ success: true, message: "Duplicate skipped" });
         }
     }
-    // --- END OF DUPLICATE CHECK ---
 
     // 2. Build the WhatsApp API URL
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${companyNumberId}/messages`;
+    // FIX: Force v17.0 (or whatever was passed) to match the working PowerShell script
+    const version = apiVersion || "v17.0";
+    const WHATSAPP_API_URL = `https://graph.facebook.com/${version}/${companyNumberId}/messages`;
 
-    // 3. Build the message payload
+    // 3. Build the Smart Payload
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
@@ -44,8 +45,9 @@ exports.sendMessage = async (req, res) => {
             parameters: [
               {
                 type: "text",
-                text: contact.name || "friend",
-                parameter_name: "customer_name" 
+                text: variableValue || "Customer",
+                // FIX: Use the specific parameter name (e.g. 'name') required by your template
+                parameter_name: variableName || "name" 
               }
             ]
           }
@@ -69,18 +71,17 @@ exports.sendMessage = async (req, res) => {
     if (!response.ok) {
       console.error('WhatsApp API Error:', JSON.stringify(result.error, null, 2));
       if (campaignId) {
-        // We only increment FAILED count here
         await Campaign.findByIdAndUpdate(campaignId, { $inc: { failedCount: 1 } });
       }
-      return res.status(500).json({ success: false, error: result.error.message });
+      // Return 200 to QStash even on Meta error to prevent infinite retries of bad data
+      return res.status(200).json({ success: false, error: result.error.message });
     }
 
-    // 6. If it succeeds, get the message ID
-    const messageId = result.messages[0].id; // This is the 'wamid'
-    console.log(`Message sent successfully to: ${contact.phone} (wamid: ${messageId})`);
+    // 6. Success
+    const messageId = result.messages[0].id;
+    console.log(`Message sent successfully to: ${contact.phone}`);
 
-    // --- 7. SAVE OUTBOUND MESSAGE ---
-    // We create the log, but we do NOT increment the delivered count.
+    // 7. Save Outbound Message Log
     if (campaignId) {
       const company = await Company.findOne({ numberId: companyNumberId });
       
@@ -90,29 +91,30 @@ exports.sendMessage = async (req, res) => {
         campaign: campaignId,
         waMessageId: messageId,
         direction: 'outbound',
-        status: 'sent' // The webhook will update this to 'delivered'
+        status: 'sent',
+        body: `Template: ${templateName}`
       });
       await newMessage.save();
+      
+      // Update Campaign Stats (Increment Sent Count)
+      await Campaign.findByIdAndUpdate(campaignId, { $inc: { sentCount: 1 } });
     }
-    // --- END OF NEW CODE ---
 
     res.status(200).json({ success: true, messageId: messageId });
 
   } catch (error) {
-    console.error('Server Error:', error.message);
+    console.error('Worker Server Error:', error.message);
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 };
 
 
 // ---
-// --- WEBHOOK FUNCTIONS ---
+// --- WEBHOOK FUNCTIONS (Preserved) ---
 // ---
 
-// @desc    This function VERIFIES the webhook with Meta
+// @desc    Verify Webhook
 exports.verifyWebhook = (req, res) => {
-  // (This function is unchanged and correct)
-  console.log("Attempting to verify webhook...");
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -120,26 +122,21 @@ exports.verifyWebhook = (req, res) => {
 
   if (mode && token) {
     if (mode === "subscribe" && token === verifyToken) {
-      console.log("WEBHOOK_VERIFIED");
       res.status(200).send(challenge);
     } else {
-      console.log("WEBHOOK_VERIFICATION_FAILED: Incorrect token");
       res.sendStatus(403);
     }
   } else {
-    console.log("WEBHOOK_VERIFICATION_FAILED: Missing mode or token");
     res.sendStatus(403);
   }
 };
 
 
-// @desc    This function handles ALL incoming data from WhatsApp
+// @desc    Handle Incoming Data
 exports.handleWebhook = async (req, res) => {
-  // (This function is unchanged and correct)
   try {
     const body = req.body;
     if (body.object === "whatsapp_business_account") {
-      
       if (body.entry && body.entry.length > 0) {
         body.entry.forEach((entry) => {
           if (entry.changes && entry.changes.length > 0) {
@@ -150,7 +147,6 @@ exports.handleWebhook = async (req, res) => {
               if (value.messages) {
                 const message = value.messages[0];
                 if (message.type === "text") {
-                  console.log(`New reply from ${message.from}: ${message.text.body}`);
                   saveIncomingMessage(value.metadata.phone_number_id, message);
                 }
               }
@@ -163,9 +159,7 @@ exports.handleWebhook = async (req, res) => {
           }
         });
       }
-      
       res.status(200).send("EVENT_RECEIVED");
-
     } else {
       res.sendStatus(404);
     }
@@ -177,27 +171,17 @@ exports.handleWebhook = async (req, res) => {
 
 
 // --- HELPER FUNCTIONS ---
+
 async function saveIncomingMessage(companyNumberId, message) {
-  // (This function is unchanged and correct)
   try {
     const company = await Company.findOne({ numberId: companyNumberId });
-    if (!company) {
-      console.log(`Cannot save message: No company found with ID ${companyNumberId}`);
-      return;
-    }
-    const contact = await Contact.findOne({ 
-      phone: message.from,
-      company: company._id 
-    });
-    if (!contact) {
-      console.log(`Cannot save message: No contact found with phone ${message.from}`);
-      return;
-    }
+    if (!company) return;
+
+    const contact = await Contact.findOne({ phone: message.from, company: company._id });
+    if (!contact) return;
+
     const existingMessage = await Message.findOne({ waMessageId: message.id });
-    if (existingMessage) {
-      console.log("Duplicate inbound message ignored.");
-      return;
-    }
+    if (existingMessage) return;
     
     const newMessage = new Message({
       company: company._id,
@@ -208,31 +192,24 @@ async function saveIncomingMessage(companyNumberId, message) {
       isRead: false 
     });
     await newMessage.save();
-    console.log("Saved new inbound message to database.");
 
   } catch (error) {
     console.error("Error saving incoming message:", error);
   }
 }
 
-// @desc    This function is now UPDATED for accurate analytics
-// --- THIS FUNCTION IS FULLY UPDATED ---
 async function updateCampaignStatus(statusUpdate) {
   try {
-    const wamid = statusUpdate.id; // The ID of the message
-    const status = statusUpdate.status; // 'delivered' or 'read'
+    const wamid = statusUpdate.id;
+    const status = statusUpdate.status; 
 
-    // 1. Find the message in our database
+    // 1. Find message
     const message = await Message.findOne({ waMessageId: wamid });
-    if (!message) {
-      // Not a message we are tracking
-      return;
-    }
+    if (!message) return;
     
-    // Store the *old* status before updating
     const oldStatus = message.status;
 
-    // 2. Update the message's own status (only move forward)
+    // 2. Update message status
     if (oldStatus === 'sent' && (status === 'delivered' || status === 'read')) {
       message.status = status;
     }
@@ -240,38 +217,25 @@ async function updateCampaignStatus(statusUpdate) {
       message.status = status;
     }
     
-    // --- 3. THIS IS THE ACCURATE ANALYTICS ---
+    // 3. Update Campaign Analytics
     if (message.campaign) {
-        
-        // If the new status is 'delivered' AND the old status was 'sent'
         if (status === 'delivered' && oldStatus === 'sent') {
-            await Campaign.findByIdAndUpdate(message.campaign, { 
-              $inc: { deliveredCount: 1 } // Increment DELIVERED
-            });
-            console.log(`Campaign ${message.campaign} was DELIVERED.`);
+            await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
         }
         
-        // If the new status is 'read' AND the old status was *not* 'read'
         if (status === 'read' && oldStatus !== 'read') {
-            await Campaign.findByIdAndUpdate(message.campaign, { 
-              $inc: { readCount: 1 } // Increment READ
-            });
-            console.log(`Campaign ${message.campaign} was READ.`);
-
-            // If it went from 'sent' straight to 'read', it was also delivered
+            await Campaign.findByIdAndUpdate(message.campaign, { $inc: { readCount: 1 } });
+            
+            // Implicit delivery if read happens fast
             if (oldStatus === 'sent') {
-              await Campaign.findByIdAndUpdate(message.campaign, { 
-                $inc: { deliveredCount: 1 } 
-              });
-              console.log(`Campaign ${message.campaign} was DELIVERED (inferred from read).`);
+              await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
             }
         }
     }
-    // --- END OF ANALYTICS ---
 
-    await message.save(); // Save the updated status on the message
+    await message.save();
 
   } catch (error) {
     console.error("Error updating campaign status:", error);
   }
-} 
+}

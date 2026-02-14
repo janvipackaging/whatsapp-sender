@@ -8,48 +8,44 @@ const MessageSchema = new mongoose.Schema({
   },
   contact: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Contact',
-    required: true
+    ref: 'Contact'
   },
-  
-  // --- NEW FIELD ---
-  // This links an outbound message to the campaign it came from.
   campaign: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Campaign',
-    required: false // Not required, since inbound replies don't have this
+    ref: 'Campaign'
   },
-  // --- END OF NEW FIELD ---
-  
+  // WhatsApp Message ID (Critical for tracking delivery/read receipts)
   waMessageId: {
-    type: String, // The 'wamid' from WhatsApp
-    required: true,
-    unique: true
+    type: String,
+    unique: true,
+    sparse: true
   },
   body: {
-    type: String, // The text of the customer's reply
-    required: false // Not required for status-only or outbound template messages
+    type: String,
+    required: true
   },
   direction: {
     type: String,
     enum: ['inbound', 'outbound'],
     required: true
   },
-  
-  // --- NEW STATUS FIELD ---
-  // This will store 'sent', 'delivered', 'read' from the webhook
   status: {
     type: String,
     enum: ['sent', 'delivered', 'read', 'failed'],
     default: 'sent'
   },
-  // --- END OF NEW FIELD ---
-
+  // For the Inbox Unread badge
   isRead: {
     type: Boolean,
-    default: false // For your "Inbox" page
+    default: false
+  },
+  error: {
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-  
-}, { timestamps: true }); // 'createdAt' will be when the message was received or sent
+});
 
 module.exports = mongoose.model('Message', MessageSchema);
