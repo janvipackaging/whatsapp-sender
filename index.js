@@ -5,7 +5,7 @@ const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
-// REMOVED: const MongoStore = require('connect-mongo'); // Causing crash if missing
+// REMOVED: const MongoStore = require('connect-mongo'); // Removed to fix 500 Error
 
 require('./config/passport')(passport); 
 const { isAuthenticated, isAdmin } = require('./config/auth'); 
@@ -34,12 +34,12 @@ app.set('view engine', 'ejs');
 
 // --- SAFE SESSION SETUP (MemoryStore) ---
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'janvi_secret', 
+  secret: process.env.SESSION_SECRET || 'janvi_secret_key', 
   resave: false,
   saveUninitialized: false,
   // store: MongoStore... (Removed to prevent crash)
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // true on Vercel
     maxAge: 1000 * 60 * 60 * 24 // 24 hours
   }
 }));
@@ -57,7 +57,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- DASHBOARD ---
+// --- DASHBOARD ROUTE ---
 app.get('/', isAuthenticated, async (req, res) => {
   try {
     const totalContacts = await Contact.countDocuments();
@@ -70,7 +70,14 @@ app.get('/', isAuthenticated, async (req, res) => {
     const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 });
     const companies = await Company.find();
     const segments = await Segment.find();
-    const pendingUsers = await User.find({ isApproved: false }).populate('company', 'name'); 
+    
+    // Safety check for pending users query
+    let pendingUsers = [];
+    try {
+        pendingUsers = await User.find({ isApproved: false }).populate('company', 'name'); 
+    } catch (e) {
+        console.log("User model might be outdated, skipping pending users query.");
+    }
 
     res.render('index', { 
       totalContacts, totalCampaigns, totalUnread, recentMessages,
@@ -78,7 +85,8 @@ app.get('/', isAuthenticated, async (req, res) => {
     });
   } catch (error) {
     console.error("Dashboard Error:", error);
-    res.status(500).send('Error loading dashboard');
+    // Instead of crashing, send a basic error message
+    res.status(500).send('Error loading dashboard. Please check logs.');
   }
 });
 
@@ -93,7 +101,7 @@ app.use('/segments', isAuthenticated, require('./routes/segments'));
 app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
 app.use('/users', require('./routes/users'));
 
-// API ROUTE (Must exist!)
+// API ROUTE
 app.use('/api', require('./routes/api')); 
 
 app.listen(PORT, () => {
