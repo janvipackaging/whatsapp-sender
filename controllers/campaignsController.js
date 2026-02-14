@@ -44,23 +44,15 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
-    if (!company) {
-      req.flash('error_msg', 'Company not found.');
-      return res.redirect('/campaigns');
-    }
-
     const template = await Template.findById(templateId);
-    if (!template) {
-      req.flash('error_msg', 'Template not found.');
-      return res.redirect('/campaigns');
-    }
-    
-    const templateName = template.codeName || template.templateName || template.name; 
 
-    const segmentContacts = await Contact.find({
-      company: companyId,
-      segments: segmentId
-    });
+    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
+    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
+    
+    // Safety check for template name
+    const templateName = (template.codeName || template.templateName || template.name || '').trim();
+
+    const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
 
     if (segmentContacts.length === 0) {
        req.flash('error_msg', 'No contacts found in this segment.');
@@ -70,7 +62,6 @@ exports.startCampaign = async (req, res) => {
     // --- BLOCKLIST CHECK ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
-    
     let contactsToSend = [];
     
     segmentContacts.forEach(contact => {
@@ -100,13 +91,10 @@ exports.startCampaign = async (req, res) => {
 
     let jobsAdded = 0;
     
-    // SMART CHECK: Does this template need a variable?
-    // 1. Check DB 'variable1'
-    // 2. Check if name contains 'calculator' (Hard fix for your specific issue)
+    // Check if variables are needed
     let hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
-    if (templateName.toLowerCase().includes('calculator')) {
-        hasVariable = true;
-    }
+    // Force variable if name suggests it (Smart Fix)
+    if (templateName.toLowerCase().includes('calculator')) hasVariable = true;
 
     for (const contact of contactsToSend) { 
       const jobData = {
@@ -137,16 +125,20 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE TEST SENDER (v17.0 + Smart Error Reporting) ---
+// --- ULTIMATE TEST SENDER (Sanitizes Phone Numbers) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
-    const targetPhone = phone || req.body.testPhone;
+    let targetPhone = phone || req.body.testPhone;
 
     if (!companyId || !templateId || !targetPhone) {
       req.flash('error_msg', 'Fields missing.');
       return res.redirect('/campaigns');
     }
+
+    // --- FIX 1: Clean the Phone Number ---
+    // Meta rejects numbers with '+' or spaces in the API call
+    targetPhone = targetPhone.replace(/[^0-9]/g, '');
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
@@ -158,18 +150,21 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     
-    // FORCE v17.0 (Matching your working PowerShell script)
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
-    
-    const tplName = (template.codeName || template.templateName || '').trim();
-    const dbVarName = template.variable1 || 'customer_name'; // Use DB var name or default
+    const tplName = (template.codeName || template.templateName || template.name || '').trim();
+    const dbVarName = template.variable1 || 'customer_name'; 
     
     // --- HELPER: Send Request ---
     async function attemptSend(mode, lang = "en_US") {
         let components = [];
 
-        if (mode === 'named') {
+        if (mode === 'standard') {
+            components = [{
+                type: "body",
+                parameters: [{ type: "text", text: "Valued Customer" }]
+            }];
+        } else if (mode === 'named') {
             components = [{
                 type: "body",
                 parameters: [{ 
@@ -177,11 +172,6 @@ exports.sendTestMessage = async (req, res) => {
                     text: "Valued Customer",
                     parameter_name: dbVarName 
                 }]
-            }];
-        } else if (mode === 'standard') {
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
             }];
         } 
         // Mode 'none' sends empty components
@@ -197,7 +187,7 @@ exports.sendTestMessage = async (req, res) => {
             }
         };
 
-        console.log(`Trying: Mode=${mode}, Lang=${lang}`);
+        console.log(`Trying Mode: ${mode}, Lang: ${lang}, To: ${targetPhone}`);
         const response = await fetch(WHATSAPP_API_URL, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -206,41 +196,39 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- STRATEGY: TRY EVERYTHING ---
+    // --- EXECUTE STRATEGY ---
     
-    // 1. Named Param (Exact PowerShell Match) + en_US
-    let result = await attemptSend('named', 'en_US');
+    // 1. Try Standard (Most Common)
+    let result = await attemptSend('standard', 'en_US');
     if (!result.error) return success(req, res, targetPhone);
 
     const firstError = result.error;
-    console.log(`Failed (Named/US): ${firstError.message}`);
+    console.log(`Failed (Standard/US): ${firstError.message}`);
 
-    // 2. Standard Param + en_US (Common UI Template)
-    // Only try if the template actually exists (ignore language errors for now)
+    // 2. Try Named (Backup)
     if (firstError.code !== 132001) {
-        result = await attemptSend('standard', 'en_US');
+        result = await attemptSend('named', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
     }
 
-    // 3. No Params (Only if previous errors suggest param issues like #100 or #132000)
+    // 3. Try No Params (Last Resort)
+    // If previous error was about params, try without any
     if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
         console.log("Param error detected. Trying No Params...");
         result = await attemptSend('none', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
     }
 
-    // FAILURE: Show the error that matters
-    // If Attempt 3 failed with "Mismatch (#132000)", it means we sent 0 but it wanted 1.
-    // In that case, the REAL error is why Attempt 1/2 failed.
-    // So we show 'firstError' (from Attempt 1) because that used variables.
-    
-    let errorToDisplay = result.error;
-    if (result.error.code === 132000) {
-        errorToDisplay = firstError; // Show the named param error instead
+    // 4. Try Generic English (Last Last Resort)
+    if (result.error && result.error.code === 132001) {
+         console.log("Language error. Trying 'en'...");
+         result = await attemptSend('standard', 'en');
+         if (!result.error) return success(req, res, targetPhone);
     }
 
+    // If we get here, show the first error as it's the most likely real issue
     console.error('All Attempts Failed.');
-    req.flash('error_msg', `Meta Error (${errorToDisplay.code}): ${errorToDisplay.message}`);
+    req.flash('error_msg', `Meta Error (${firstError.code}): ${firstError.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
