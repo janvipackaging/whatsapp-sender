@@ -19,8 +19,8 @@ const User = require('./models/User');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connect to Database (Non-blocking start)
-connectDB(); 
+// Connect to Database (With Error Handling)
+connectDB().catch(err => console.error("Database Connection Failed:", err));
 
 // Trust Proxy for Vercel (Critical for Cookies)
 app.set('trust proxy', 1);
@@ -95,8 +95,10 @@ app.get('/', isAuthenticated, async (req, res) => {
 
     // Pending users check
     let pendingUsers = [];
-    if (req.user.role === 'admin') {
-        pendingUsers = await User.find({ isApproved: false }).populate('company', 'name').lean();
+    if (req.user && req.user.role === 'admin') {
+        try {
+            pendingUsers = await User.find({ isApproved: false }).populate('company', 'name').lean();
+        } catch (e) { console.error("Pending users error:", e); }
     }
 
     res.render('index', { 
@@ -121,6 +123,12 @@ app.use('/segments', isAuthenticated, require('./routes/segments'));
 app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
 app.use('/users', require('./routes/users'));
 app.use('/api', require('./routes/api')); 
+
+// --- GLOBAL ERROR HANDLER (Prevents 500 Crash Screen) ---
+app.use((err, req, res, next) => {
+  console.error('UNHANDLED APP ERROR:', err.stack);
+  res.status(500).send(`<h1>System Error</h1><p>${err.message}</p><pre>${process.env.NODE_ENV === 'development' ? err.stack : ''}</pre>`);
+});
 
 // --- SERVER STARTUP (Immediate) ---
 // We do not wait for DB connection here to prevent Vercel timeouts.
