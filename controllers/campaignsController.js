@@ -44,15 +44,23 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
+    if (!company) {
+      req.flash('error_msg', 'Company not found.');
+      return res.redirect('/campaigns');
+    }
+
     const template = await Template.findById(templateId);
-
-    if (!company) { req.flash('error_msg', 'Company not found.'); return res.redirect('/campaigns'); }
-    if (!template) { req.flash('error_msg', 'Template not found.'); return res.redirect('/campaigns'); }
+    if (!template) {
+      req.flash('error_msg', 'Template not found.');
+      return res.redirect('/campaigns');
+    }
     
-    // Clean Template Name
-    const templateName = (template.codeName || template.templateName || template.name || '').trim();
+    const templateName = template.codeName || template.templateName || template.name; 
 
-    const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
+    const segmentContacts = await Contact.find({
+      company: companyId,
+      segments: segmentId
+    });
 
     if (segmentContacts.length === 0) {
        req.flash('error_msg', 'No contacts found in this segment.');
@@ -62,6 +70,7 @@ exports.startCampaign = async (req, res) => {
     // --- BLOCKLIST CHECK ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
+    
     let contactsToSend = [];
     
     segmentContacts.forEach(contact => {
@@ -90,8 +99,6 @@ exports.startCampaign = async (req, res) => {
     const phoneId = company.phoneNumberId || company.numberId;
 
     let jobsAdded = 0;
-    
-    // Check if we should send variables based on DB
     const hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
 
     for (const contact of contactsToSend) { 
@@ -123,7 +130,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- SMART TEST MESSAGE (Fixed Success Handler) ---
+// --- ULTIMATE TEST SENDER (v17.0 + Exhaustive Retry) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -144,35 +151,42 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    
+    // FORCE v17.0 (Matching your working PowerShell script)
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     
     const tplName = (template.codeName || template.templateName || '').trim();
     
-    // Default variable name if missing
-    const varName = template.variable1 || "customer_name";
-
     // --- HELPER: Send Request ---
-    async function attemptSend(mode) {
+    async function attemptSend(mode, lang = "en_US") {
         let components = [];
 
         if (mode === 'named') {
-            // MATCHING YOUR POWERSHELL SCRIPT EXACTLY (Priority 1)
             components = [{
                 type: "body",
                 parameters: [{ 
                     type: "text", 
                     text: "Valued Customer",
-                    parameter_name: varName 
+                    parameter_name: "customer_name" // Explicitly "customer_name"
+                }]
+            }];
+        } else if (mode === 'named_alt') {
+             // Try 'name' just in case the template variable is literally named 'name'
+             components = [{
+                type: "body",
+                parameters: [{ 
+                    type: "text", 
+                    text: "Valued Customer",
+                    parameter_name: "name" 
                 }]
             }];
         } else if (mode === 'standard') {
-            // Standard Positional (Priority 2)
             components = [{
                 type: "body",
                 parameters: [{ type: "text", text: "Valued Customer" }]
             }];
         } 
-        // Mode 'none' sends empty components (Priority 3)
+        // Mode 'none' sends empty components
 
         const payload = {
             messaging_product: "whatsapp",
@@ -180,12 +194,12 @@ exports.sendTestMessage = async (req, res) => {
             type: "template",
             template: {
                 name: tplName,
-                language: { code: "en_US" }, 
+                language: { code: lang }, 
                 components: components
             }
         };
 
-        console.log(`Attempting Mode: ${mode}`);
+        console.log(`Trying: Mode=${mode}, Lang=${lang}`);
         const response = await fetch(WHATSAPP_API_URL, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -194,32 +208,34 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE STRATEGY ---
+    // --- STRATEGY: TRY EVERYTHING UNTIL ONE WORKS ---
     
-    // 1. Try Named Parameters
-    let result = await attemptSend('named');
-    if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
+    // 1. Named Param (Exact PowerShell Match) + en_US
+    let result = await attemptSend('named', 'en_US');
+    if (!result.error) return success(req, res, targetPhone);
 
-    const namedError = result.error;
-    console.log("Named param failed:", JSON.stringify(namedError));
+    console.log(`Failed (Named/US): ${result.error.message}. Retrying Standard...`);
 
-    // 2. Try Standard Parameters
-    // Don't retry if template doesn't exist (#132001)
-    if (namedError.code !== 132001) { 
-        result = await attemptSend('standard');
-        if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
-    }
+    // 2. Standard Param + en_US (Common UI Template)
+    result = await attemptSend('standard', 'en_US');
+    if (!result.error) return success(req, res, targetPhone);
 
-    // 3. Try No Parameters
-    if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
-        console.log("Param error detected. Trying No Params...");
-        result = await attemptSend('none');
-        if (!result.error) return success(req, res, targetPhone); // FIXED: Added 'req'
-    }
+    // 3. Named Param + en (Language Fallback)
+    console.log(`Failed (Standard/US). Retrying 'en' Named...`);
+    result = await attemptSend('named', 'en');
+    if (!result.error) return success(req, res, targetPhone);
 
-    // If we get here, show the first error (Named Param) as it's the most descriptive
+    // 4. No Params (If template has 0 vars)
+    console.log(`Failed. Retrying No Params...`);
+    result = await attemptSend('none', 'en_US');
+    if (!result.error) return success(req, res, targetPhone);
+
+    // If everything failed, show the error from the FIRST attempt (most likely configuration)
+    // or the last one if it was a parameter mismatch.
+    const finalMsg = result.error ? result.error.message : "Unknown Error";
     console.error('All Attempts Failed.');
-    req.flash('error_msg', `Meta Error (${namedError.code}): ${namedError.message}`);
+    
+    req.flash('error_msg', `Meta Error: ${finalMsg}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
@@ -229,7 +245,7 @@ exports.sendTestMessage = async (req, res) => {
   }
 };
 
-// Helper for success response (FIXED SIGNATURE)
+// Helper for success response
 function success(req, res, phone) {
     console.log(`Message sent successfully to ${phone}`);
     req.flash('success_msg', `Test message sent to ${phone} successfully!`);
