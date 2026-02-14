@@ -12,6 +12,21 @@ const qstashClient = new Client({
   token: process.env.QSTASH_TOKEN,
 });
 
+// --- HELPER: Clean Phone Number for Meta API ---
+// Meta strictly forbids '+' or spaces in the API 'to' field.
+function cleanPhoneForMeta(phone) {
+  if (!phone) return "";
+  let cleaned = String(phone).replace(/\D/g, ''); // Remove all non-digits
+  
+  // If number starts with 00, replace with nothing (common international prefix)
+  if (cleaned.startsWith('00')) cleaned = cleaned.substring(2);
+  
+  // Basic India handling: if it's 10 digits, prefix 91
+  if (cleaned.length === 10) cleaned = '91' + cleaned;
+  
+  return cleaned;
+}
+
 // @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
@@ -19,7 +34,6 @@ exports.getCampaignPage = async (req, res) => {
     const segments = await Segment.find();
     const templates = await Template.find(); 
 
-    // Global middleware in index.js handles flash messages.
     res.render('campaigns', {
       user: req.user,
       companies: companies,
@@ -55,7 +69,6 @@ exports.startCampaign = async (req, res) => {
       return res.redirect('/campaigns');
     }
     
-    // Safety check for template name
     const templateName = (template.codeName || template.templateName || template.name || '').trim();
 
     const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
@@ -97,19 +110,23 @@ exports.startCampaign = async (req, res) => {
 
     let jobsAdded = 0;
     
-    // Check if variables are needed
     let hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
-    // Force variable if name suggests it (Smart Fix)
     if (templateName.toLowerCase().includes('calculator')) hasVariable = true;
 
     for (const contact of contactsToSend) { 
+      // CRITICAL: Clean the phone number before sending to the QStash job
+      const cleanedTo = cleanPhoneForMeta(contact.phone);
+      
       const jobData = {
-        contact: contact,
+        // Overwrite the contact phone with a cleaned one for the API call
+        contact: { ...contact.toObject(), phone: cleanedTo },
         templateName: templateName, 
         companyToken: token,
         companyNumberId: phoneId,
         campaignId: newCampaign._id,
-        variableValue: hasVariable ? (contact.name || 'Customer') : null
+        variableValue: hasVariable ? (contact.name || 'Customer') : null,
+        // Pass the variable name as well so the worker knows what key to use
+        variableName: template.variable1 || "customer_name" 
       };
 
       await qstashClient.publishJSON({
@@ -131,7 +148,7 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE TEST SENDER (Matches PowerShell Configuration) ---
+// --- ULTIMATE TEST SENDER (Matches PowerShell Configuration exactly) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -142,10 +159,8 @@ exports.sendTestMessage = async (req, res) => {
       return res.redirect('/campaigns');
     }
 
-    // --- FIX 1: Clean Phone Number ---
-    targetPhone = targetPhone.replace(/[^0-9]/g, '');
-    // Optional: If length is 10, assume India (+91) - remove this if you send international
-    if (targetPhone.length === 10) targetPhone = '91' + targetPhone;
+    // --- FIX 1: Strict Cleaning of Phone Number ---
+    targetPhone = cleanPhoneForMeta(targetPhone);
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
@@ -158,18 +173,18 @@ exports.sendTestMessage = async (req, res) => {
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
     
-    // --- FIX 2: Use API v17.0 (Matches your Working Script) ---
+    // --- FIX 2: Force v17.0 (PowerShell Match) ---
     const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     
     const tplName = (template.codeName || template.templateName || template.name || '').trim();
     const dbVarName = template.variable1 || 'customer_name'; 
     
-    // --- HELPER: Send Request ---
+    // --- HELPER: Send Request with different parameter strategies ---
     async function attemptSend(mode, lang = "en_US") {
         let components = [];
 
-        if (mode === 'named') {
-            // Priority 1: Named Parameter (Matches Script)
+        if (mode === 'named_db') {
+            // Strategy 1: Named Parameter using DB name
             components = [{
                 type: "body",
                 parameters: [{ 
@@ -178,8 +193,18 @@ exports.sendTestMessage = async (req, res) => {
                     parameter_name: dbVarName 
                 }]
             }];
+        } else if (mode === 'named_ui') {
+            // Strategy 2: Named Parameter using 'name' (Matches {{name}} in UI)
+            components = [{
+                type: "body",
+                parameters: [{ 
+                    type: "text", 
+                    text: "Valued Customer",
+                    parameter_name: "name" 
+                }]
+            }];
         } else if (mode === 'standard') {
-            // Priority 2: Standard Positional
+            // Strategy 3: Standard Positional
             components = [{
                 type: "body",
                 parameters: [{ type: "text", text: "Valued Customer" }]
@@ -207,38 +232,47 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE STRATEGY ---
+    // --- EXECUTE STRATEGY WATERFALL ---
     
-    // 1. Try Named Parameters (Primary - Matches Script)
-    let result = await attemptSend('named', 'en_US');
+    // 1. Try Named (DB Name) - PowerShell script match
+    let result = await attemptSend('named_db', 'en_US');
     if (!result.error) return success(req, res, targetPhone);
 
     const firstError = result.error;
-    console.log(`Failed (Named/US): ${firstError.message}`);
+    console.log(`Failed (Named DB): ${firstError.message}`);
 
-    // 2. Try Standard Parameters (Fallback)
+    // 2. Try Named (UI 'name') - If Meta UI shows {{name}}
+    if (firstError.code === 100 || firstError.code === 132000) {
+        result = await attemptSend('named_ui', 'en_US');
+        if (!result.error) return success(req, res, targetPhone);
+        console.log(`Failed (Named UI): ${result.error.message}`);
+    }
+
+    // 3. Try Standard Positional (Fallback)
     if (firstError.code !== 132001) {
         result = await attemptSend('standard', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
+        console.log(`Failed (Standard): ${result.error.message}`);
     }
 
-    // 3. Try No Params (Last Resort)
-    if (result.error && (result.error.code === 100 || result.error.code === 132000 || result.error.message.includes('parameter'))) {
-        console.log("Param error detected. Trying No Params...");
+    // 4. Try No Params (Last Resort)
+    if (result.error && (result.error.code === 100 || result.error.code === 132000)) {
+        console.log("Param mismatch. Trying No Params...");
         result = await attemptSend('none', 'en_US');
         if (!result.error) return success(req, res, targetPhone);
     }
 
-    // 4. Try Generic English (Language Fallback)
+    // 5. Try 'en' (Language code fallback)
     if (result.error && result.error.code === 132001) {
-         console.log("Language error. Trying 'en'...");
-         result = await attemptSend('named', 'en');
+         console.log("Language error. Trying code 'en'...");
+         result = await attemptSend('named_db', 'en');
          if (!result.error) return success(req, res, targetPhone);
     }
 
-    // If we get here, show the first error (Named Param) as it's the target configuration
-    console.error('All Attempts Failed.');
-    req.flash('error_msg', `Meta Error (${firstError.code}): ${firstError.message}`);
+    // Capture the most descriptive error for the user
+    const errorToDisplay = firstError.code === 100 ? firstError : result.error;
+    console.error('All attempts failed for test message.');
+    req.flash('error_msg', `Meta Error (${errorToDisplay.code}): ${errorToDisplay.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
