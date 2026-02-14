@@ -13,17 +13,11 @@ const qstashClient = new Client({
 });
 
 // --- HELPER: Clean Phone Number for Meta API ---
-// Meta strictly forbids '+' or spaces in the API 'to' field.
 function cleanPhoneForMeta(phone) {
   if (!phone) return "";
-  let cleaned = String(phone).replace(/\D/g, ''); // Remove all non-digits
-  
-  // If number starts with 00, replace with nothing (common international prefix)
+  let cleaned = String(phone).replace(/\D/g, ''); 
   if (cleaned.startsWith('00')) cleaned = cleaned.substring(2);
-  
-  // Basic India handling: if it's 10 digits, prefix 91
   if (cleaned.length === 10) cleaned = '91' + cleaned;
-  
   return cleaned;
 }
 
@@ -58,19 +52,14 @@ exports.startCampaign = async (req, res) => {
 
   try {
     const company = await Company.findById(companyId);
-    if (!company) {
-      req.flash('error_msg', 'Company not found.');
-      return res.redirect('/campaigns');
-    }
-
     const template = await Template.findById(templateId);
-    if (!template) {
-      req.flash('error_msg', 'Template not found.');
+
+    if (!company || !template) {
+      req.flash('error_msg', 'Company or Template not found.');
       return res.redirect('/campaigns');
     }
     
     const templateName = (template.codeName || template.templateName || template.name || '').trim();
-
     const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
 
     if (segmentContacts.length === 0) {
@@ -78,19 +67,22 @@ exports.startCampaign = async (req, res) => {
        return res.redirect('/campaigns');
     }
     
-    // --- BLOCKLIST CHECK ---
+    // --- BLOCKLIST & DUPLICATE CHECK ---
     const blockedNumbersDocs = await Blocklist.find({ company: companyId });
     const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
+    const uniquePhonesInThisRun = new Set();
     let contactsToSend = [];
     
     segmentContacts.forEach(contact => {
-        if (!blockedPhones.has(contact.phone)) {
+        const cleanedPhone = cleanPhoneForMeta(contact.phone);
+        if (!blockedPhones.has(contact.phone) && !uniquePhonesInThisRun.has(cleanedPhone)) {
+            uniquePhonesInThisRun.add(cleanedPhone);
             contactsToSend.push(contact);
         }
     });
 
     if (contactsToSend.length === 0) {
-      req.flash('error_msg', 'Campaign Blocked: All contacts are in the blocklist.');
+      req.flash('error_msg', 'No unique/valid contacts available to send.');
       return res.redirect('/campaigns');
     }
 
@@ -108,25 +100,27 @@ exports.startCampaign = async (req, res) => {
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
 
-    let jobsAdded = 0;
-    
-    let hasVariable = template.variable1 || (template.variables && template.variables.length > 0);
-    if (templateName.toLowerCase().includes('calculator')) hasVariable = true;
+    // --- SMART VARIABLE DETECTION ---
+    // Your Meta UI shows {{name}}. We must send the key "name".
+    let varKey = template.variable1 || "name";
+    if (templateName.toLowerCase().includes('calculator')) {
+        varKey = "name"; // Force "name" for this specific template
+    }
 
+    let jobsAdded = 0;
     for (const contact of contactsToSend) { 
-      // CRITICAL: Clean the phone number before sending to the QStash job
       const cleanedTo = cleanPhoneForMeta(contact.phone);
       
       const jobData = {
-        // Overwrite the contact phone with a cleaned one for the API call
         contact: { ...contact.toObject(), phone: cleanedTo },
         templateName: templateName, 
         companyToken: token,
         companyNumberId: phoneId,
         campaignId: newCampaign._id,
-        variableValue: hasVariable ? (contact.name || 'Customer') : null,
-        // Pass the variable name as well so the worker knows what key to use
-        variableName: template.variable1 || "customer_name" 
+        // We pass the data so the worker has everything it needs to succeed
+        variableValue: contact.name || 'Customer',
+        variableName: varKey,
+        apiVersion: "v17.0" // Force the version that worked in your script
       };
 
       await qstashClient.publishJSON({
@@ -137,7 +131,7 @@ exports.startCampaign = async (req, res) => {
       jobsAdded++;
     }
 
-    req.flash('success_msg', `Campaign Started! ${jobsAdded} messages queued via QStash.`);
+    req.flash('success_msg', `Campaign Started! ${jobsAdded} unique messages queued.`);
     res.redirect('/reports');
 
   } catch (error) {
@@ -148,19 +142,16 @@ exports.startCampaign = async (req, res) => {
 };
 
 
-// --- ULTIMATE TEST SENDER (Matches PowerShell Configuration exactly) ---
+// --- TEST SENDER (Matches PowerShell Configuration) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
-    let targetPhone = phone || req.body.testPhone;
+    let targetPhone = cleanPhoneForMeta(phone || req.body.testPhone);
 
     if (!companyId || !templateId || !targetPhone) {
       req.flash('error_msg', 'Fields missing.');
       return res.redirect('/campaigns');
     }
-
-    // --- FIX 1: Strict Cleaning of Phone Number ---
-    targetPhone = cleanPhoneForMeta(targetPhone);
 
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
@@ -172,45 +163,19 @@ exports.sendTestMessage = async (req, res) => {
 
     const token = company.permanentToken || company.whatsappToken;
     const phoneId = company.phoneNumberId || company.numberId;
-    
-    // --- FIX 2: Force v17.0 (PowerShell Match) ---
     const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
+    const tplName = (template.codeName || template.templateName || '').trim();
     
-    const tplName = (template.codeName || template.templateName || template.name || '').trim();
-    const dbVarName = template.variable1 || 'customer_name'; 
-    
-    // --- HELPER: Send Request with different parameter strategies ---
-    async function attemptSend(mode, lang = "en_US") {
+    // Waterfall Strategy
+    async function attemptSend(mode) {
         let components = [];
-
-        if (mode === 'named_db') {
-            // Strategy 1: Named Parameter using DB name
-            components = [{
-                type: "body",
-                parameters: [{ 
-                    type: "text", 
-                    text: "Valued Customer",
-                    parameter_name: dbVarName 
-                }]
-            }];
-        } else if (mode === 'named_ui') {
-            // Strategy 2: Named Parameter using 'name' (Matches {{name}} in UI)
-            components = [{
-                type: "body",
-                parameters: [{ 
-                    type: "text", 
-                    text: "Valued Customer",
-                    parameter_name: "name" 
-                }]
-            }];
+        if (mode === 'named_ui') {
+            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer", parameter_name: "name" }] }];
+        } else if (mode === 'named_db') {
+            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer", parameter_name: template.variable1 || "customer_name" }] }];
         } else if (mode === 'standard') {
-            // Strategy 3: Standard Positional
-            components = [{
-                type: "body",
-                parameters: [{ type: "text", text: "Valued Customer" }]
-            }];
-        } 
-        // Mode 'none' sends empty components
+            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer" }] }];
+        }
 
         const payload = {
             messaging_product: "whatsapp",
@@ -218,12 +183,11 @@ exports.sendTestMessage = async (req, res) => {
             type: "template",
             template: {
                 name: tplName,
-                language: { code: lang }, 
+                language: { code: "en_US" }, 
                 components: components
             }
         };
 
-        console.log(`Trying Mode: ${mode}, Lang: ${lang}, To: ${targetPhone}`);
         const response = await fetch(WHATSAPP_API_URL, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -232,59 +196,27 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // --- EXECUTE STRATEGY WATERFALL ---
-    
-    // 1. Try Named (DB Name) - PowerShell script match
-    let result = await attemptSend('named_db', 'en_US');
+    // Attempt Waterfall
+    let result = await attemptSend('named_ui');
     if (!result.error) return success(req, res, targetPhone);
 
-    const firstError = result.error;
-    console.log(`Failed (Named DB): ${firstError.message}`);
+    result = await attemptSend('named_db');
+    if (!result.error) return success(req, res, targetPhone);
 
-    // 2. Try Named (UI 'name') - If Meta UI shows {{name}}
-    if (firstError.code === 100 || firstError.code === 132000) {
-        result = await attemptSend('named_ui', 'en_US');
-        if (!result.error) return success(req, res, targetPhone);
-        console.log(`Failed (Named UI): ${result.error.message}`);
-    }
+    result = await attemptSend('standard');
+    if (!result.error) return success(req, res, targetPhone);
 
-    // 3. Try Standard Positional (Fallback)
-    if (firstError.code !== 132001) {
-        result = await attemptSend('standard', 'en_US');
-        if (!result.error) return success(req, res, targetPhone);
-        console.log(`Failed (Standard): ${result.error.message}`);
-    }
-
-    // 4. Try No Params (Last Resort)
-    if (result.error && (result.error.code === 100 || result.error.code === 132000)) {
-        console.log("Param mismatch. Trying No Params...");
-        result = await attemptSend('none', 'en_US');
-        if (!result.error) return success(req, res, targetPhone);
-    }
-
-    // 5. Try 'en' (Language code fallback)
-    if (result.error && result.error.code === 132001) {
-         console.log("Language error. Trying code 'en'...");
-         result = await attemptSend('named_db', 'en');
-         if (!result.error) return success(req, res, targetPhone);
-    }
-
-    // Capture the most descriptive error for the user
-    const errorToDisplay = firstError.code === 100 ? firstError : result.error;
-    console.error('All attempts failed for test message.');
-    req.flash('error_msg', `Meta Error (${errorToDisplay.code}): ${errorToDisplay.message}`);
+    req.flash('error_msg', `Meta Error: ${result.error.message}`);
     return res.redirect('/campaigns');
 
   } catch (error) {
-    console.error('Server Error sending test:', error);
+    console.error('Server Error:', error);
     req.flash('error_msg', 'Server Error: ' + error.message);
     res.redirect('/campaigns');
   }
 };
 
-// Helper for success response
 function success(req, res, phone) {
-    console.log(`Message sent successfully to ${phone}`);
     req.flash('success_msg', `Test message sent to ${phone} successfully!`);
     res.redirect('/campaigns');
 }
