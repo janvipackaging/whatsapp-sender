@@ -5,7 +5,6 @@ const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
 const connectDB = require('./db'); 
-const MongoStore = require('connect-mongo'); // REQUIRED for Vercel
 
 require('./config/passport')(passport); 
 const { isAuthenticated, isAdmin } = require('./config/auth'); 
@@ -20,6 +19,9 @@ const User = require('./models/User');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Connect to Database (Non-blocking start)
+connectDB(); 
+
 // Trust Proxy for Vercel (Critical for Cookies)
 app.set('trust proxy', 1);
 
@@ -29,18 +31,31 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// --- ROBUST SESSION SETUP ---
-// We use MongoStore. If this fails, the app will crash intentionally 
-// because MemoryStore cannot work on Vercel (you will get logged out instantly).
+// --- ROBUST SESSION SETUP (With Auto-Fallback) ---
+let sessionStore;
+try {
+  // Only try MongoStore if URI exists
+  if (process.env.MONGO_URI) {
+    const MongoStore = require('connect-mongo');
+    sessionStore = MongoStore.create({ 
+      mongoUrl: process.env.MONGO_URI, 
+      collectionName: 'sessions',
+      ttl: 14 * 24 * 60 * 60 // 14 days
+    });
+    console.log("Using MongoStore for sessions.");
+  } else {
+    console.warn("MONGO_URI missing. Falling back to MemoryStore.");
+  }
+} catch (e) {
+  console.warn("Session Store Error (Using MemoryStore fallback):", e.message);
+  // sessionStore remains undefined, Express uses MemoryStore by default
+}
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'janvi_secret_key_secure', 
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ 
-    mongoUrl: process.env.MONGO_URI, 
-    collectionName: 'sessions',
-    ttl: 14 * 24 * 60 * 60 // 14 days
-  }),
+  store: sessionStore, // Will use Mongo if available, Memory if not
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Must be true on Vercel https
     maxAge: 1000 * 60 * 60 * 24 * 14 // 14 days
@@ -107,11 +122,8 @@ app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
 app.use('/users', require('./routes/users'));
 app.use('/api', require('./routes/api')); 
 
-// --- SERVER STARTUP (Wait for DB) ---
-connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-}).catch(err => {
-    console.error("Failed to connect to DB, server not started:", err);
+// --- SERVER STARTUP (Immediate) ---
+// We do not wait for DB connection here to prevent Vercel timeouts.
+app.listen(PORT, () => {
+  console.log(`Server is running successfully on http://localhost:${PORT}`);
 });
