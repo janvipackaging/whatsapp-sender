@@ -14,7 +14,6 @@ const qstashClient = new Client({
 
 /**
  * Clean Phone Number for Meta API
- * Removes all non-digits. Adds 91 if it's a 10-digit number.
  */
 function cleanPhoneForMeta(phone) {
   if (!phone) return "";
@@ -27,19 +26,19 @@ function cleanPhoneForMeta(phone) {
 // @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
-    const companies = await Company.find();
-    const segments = await Segment.find();
-    const templates = await Template.find(); 
+    const companies = await Company.find().lean();
+    const segments = await Segment.find().lean();
+    const templates = await Template.find().lean(); 
     res.render('campaigns', { user: req.user, companies, segments, templates });
   } catch (error) {
-    console.error('Error fetching data for campaign page:', error);
+    console.error('Error loading campaign page:', error);
     res.status(500).send('Error loading page.');
   }
 };
 
 /**
  * Start sending a new bulk message campaign
- * OPTIMIZED: Uses batching (50 at a time) to prevent Vercel Function Timeouts.
+ * OPTIMIZED: Uses .lean() for memory efficiency and larger parallel batches.
  */
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateId, name } = req.body; 
@@ -50,15 +49,16 @@ exports.startCampaign = async (req, res) => {
   }
 
   try {
-    const company = await Company.findById(companyId);
-    const template = await Template.findById(templateId);
+    const company = await Company.findById(companyId).lean();
+    const template = await Template.findById(templateId).lean();
+    
     if (!company || !template) {
-      req.flash('error_msg', 'Company or Template not found.');
+      req.flash('error_msg', 'Selected Company or Template not found.');
       return res.redirect('/campaigns');
     }
     
-    const templateName = (template.codeName || template.templateName || template.name || '').trim();
-    const segmentContacts = await Contact.find({ company: companyId, segments: segmentId });
+    // FETCH CONTACTS: Use .lean() for 1,400 contacts to prevent memory bloat
+    const segmentContacts = await Contact.find({ company: companyId, segments: segmentId }).lean();
 
     if (segmentContacts.length === 0) {
        req.flash('error_msg', 'No contacts found in this segment.');
@@ -66,7 +66,7 @@ exports.startCampaign = async (req, res) => {
     }
     
     // --- BLOCKLIST & DUPLICATE CHECK ---
-    const blockedDocs = await Blocklist.find({ company: companyId });
+    const blockedDocs = await Blocklist.find({ company: companyId }).lean();
     const blockedPhones = new Set(blockedDocs.map(doc => doc.phone));
     const uniquePhonesInThisRun = new Set();
     const contactsToSend = [];
@@ -80,16 +80,17 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (contactsToSend.length === 0) {
-      req.flash('error_msg', 'No unique or non-blocked contacts available.');
+      req.flash('error_msg', 'No unique or non-blocked contacts available in this segment.');
       return res.redirect('/campaigns');
     }
 
     // Create Campaign Record
+    const tplName = (template.codeName || template.templateName || template.name || '').trim();
     const newCampaign = new Campaign({
       name: name || template.name, 
       company: companyId,
       segment: segmentId,
-      templateName: templateName, 
+      templateName: tplName, 
       totalSent: contactsToSend.length, 
       status: 'Sending'
     });
@@ -100,61 +101,61 @@ exports.startCampaign = async (req, res) => {
     const phoneId = company.phoneNumberId || company.numberId;
 
     // --- SMART VARIABLE DETECTION ---
-    // Match the {{name}} in your Meta Manager
     let varKey = template.variable1 || "name";
-    if (templateName.toLowerCase().includes('calculator')) {
+    if (tplName.toLowerCase().includes('calculator')) {
         varKey = "name"; 
     }
 
-    // --- BATCH PROCESSING (Fixes Server Error Timeout) ---
-    // Send 50 contacts to QStash in parallel at a time
-    const batchSize = 50;
+    // --- BATCH PROCESSING (Fixed to avoid Vercel timeouts) ---
+    // Batch size of 100 is efficient for hand-off to QStash
+    const batchSize = 100;
     for (let i = 0; i < contactsToSend.length; i += batchSize) {
       const batch = contactsToSend.slice(i, i + batchSize);
       
       await Promise.all(batch.map(async (contact) => {
         const cleanedTo = cleanPhoneForMeta(contact.phone);
+        // We don't need a heavy try-catch inside the map here because 
+        // publishJSON failure will hit the outer catch block.
         return qstashClient.publishJSON({
           url: destinationUrl,
           body: {
-            contact: { ...contact.toObject(), phone: cleanedTo },
-            templateName: templateName, 
+            contact: { ...contact, phone: cleanedTo },
+            templateName: tplName, 
             companyToken: token,
             companyNumberId: phoneId,
             campaignId: newCampaign._id,
             variableValue: contact.name || 'Customer',
             variableName: varKey,
-            apiVersion: "v17.0" // Version verified by your PowerShell script
+            apiVersion: "v17.0"
           },
           retries: 3
         });
       }));
     }
 
-    req.flash('success_msg', `Campaign Started! ${contactsToSend.length} unique messages queued.`);
+    req.flash('success_msg', `Campaign Started! ${contactsToSend.length} unique messages queued for processing.`);
     res.redirect('/reports');
 
   } catch (error) {
-    console.error('Campaign Error:', error);
-    req.flash('error_msg', 'Server Error starting campaign. The process may be too large for current settings.');
+    console.error('CRITICAL CAMPAIGN START ERROR:', error);
+    // Provide a more descriptive error message to the user
+    const errorMsg = error.message.includes('QSTASH') 
+      ? 'Error communicating with background worker (QStash). Check your token.'
+      : 'Server Error starting campaign. The process might be too large or database connection was lost.';
+    
+    req.flash('error_msg', errorMsg);
     res.redirect('/campaigns');
   }
 };
 
-
-// --- TEST SENDER (Matches PowerShell Configuration exactly) ---
+// --- TEST SENDER ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
     let targetPhone = cleanPhoneForMeta(phone || req.body.testPhone);
 
-    if (!companyId || !templateId || !targetPhone) {
-      req.flash('error_msg', 'Fields missing.');
-      return res.redirect('/campaigns');
-    }
-
-    const company = await Company.findById(companyId);
-    const template = await Template.findById(templateId);
+    const company = await Company.findById(companyId).lean();
+    const template = await Template.findById(templateId).lean();
 
     if (!company || !template) {
         req.flash('error_msg', 'Company or Template not found.');
@@ -166,14 +167,10 @@ exports.sendTestMessage = async (req, res) => {
     const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
     const tplName = (template.codeName || template.templateName || '').trim();
     
-    // Waterfall Strategy
     async function attemptSend(mode) {
-        let components = [];
-        if (mode === 'named_ui') {
-            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer", parameter_name: "name" }] }];
-        } else if (mode === 'standard') {
-            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer" }] }];
-        }
+        let params = [];
+        if (mode === 'named_ui') params = [{ type: "text", text: "Customer", parameter_name: "name" }];
+        else if (mode === 'standard') params = [{ type: "text", text: "Customer" }];
 
         const payload = {
             messaging_product: "whatsapp",
@@ -182,7 +179,7 @@ exports.sendTestMessage = async (req, res) => {
             template: {
                 name: tplName,
                 language: { code: "en_US" }, 
-                components: components
+                components: [{ type: "body", parameters: params }]
             }
         };
 
@@ -194,11 +191,8 @@ exports.sendTestMessage = async (req, res) => {
         return await response.json();
     }
 
-    // Attempt Waterfall
     let result = await attemptSend('named_ui');
-    if (result.error) {
-        result = await attemptSend('standard');
-    }
+    if (result.error) result = await attemptSend('standard');
 
     if (result.error) {
         req.flash('error_msg', `Meta Error: ${result.error.message}`);
@@ -208,7 +202,7 @@ exports.sendTestMessage = async (req, res) => {
     res.redirect('/campaigns');
 
   } catch (error) {
-    console.error('Server Error:', error);
+    console.error('Test Send Error:', error);
     req.flash('error_msg', 'Server Error: ' + error.message);
     res.redirect('/campaigns');
   }

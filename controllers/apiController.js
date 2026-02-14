@@ -4,34 +4,44 @@ const Message = require('../models/Message');
 const Company = require('../models/Company');
 const Contact = require('../models/Contact');
 
-// @desc    Background worker that actually sends the WhatsApp message
-// UPDATED: Now uses v17.0 and Named Parameters to match your working script
+/**
+ * @desc    Background worker that actually sends the WhatsApp message
+ * @route   POST /api/send-message
+ */
 exports.sendMessageWorker = async (req, res) => {
   try {
-    // 1. Get the job data
-    // We now accept 'variableName' and 'apiVersion' from the campaign controller
-    const { contact, templateName, companyToken, companyNumberId, campaignId, variableValue, variableName, apiVersion } = req.body;
+    // 1. Get the job data from the request body
+    const { 
+      contact, 
+      templateName, 
+      companyToken, 
+      companyNumberId, 
+      campaignId, 
+      variableValue, 
+      variableName, 
+      apiVersion 
+    } = req.body;
 
-    // --- DUPLICATE CHECK ---
-    // Check if this message has already been sent for this campaign
+    // --- 2. DUPLICATE CHECK (Safety Feature) ---
+    // Check if this message was already successfully sent for this campaign
     if (campaignId && contact) {
-        const existingMessage = await Message.findOne({
-            contact: contact._id,
-            campaign: campaignId
-        });
-        
-        if (existingMessage) {
-            console.log(`Duplicate job skipped: Contact ${contact.phone}`);
-            return res.status(200).json({ success: true, message: "Duplicate skipped" });
-        }
+      const existingMessage = await Message.findOne({
+        contact: contact._id,
+        campaign: campaignId
+      }).lean();
+
+      if (existingMessage && existingMessage.status !== 'failed') {
+        console.log(`Duplicate job skipped: Contact ${contact.phone}`);
+        return res.status(200).json({ success: true, message: "Duplicate skipped" });
+      }
     }
 
-    // 2. Build the WhatsApp API URL
-    // FIX: Force v17.0 (or whatever was passed) to match the working PowerShell script
+    // --- 3. BUILD WHATSAPP API URL ---
+    // Force v17.0 to match your working configuration
     const version = apiVersion || "v17.0";
     const WHATSAPP_API_URL = `https://graph.facebook.com/${version}/${companyNumberId}/messages`;
 
-    // 3. Build the Smart Payload
+    // --- 4. BUILD THE SMART PAYLOAD ---
     const messageData = {
       messaging_product: "whatsapp",
       to: contact.phone,
@@ -45,8 +55,8 @@ exports.sendMessageWorker = async (req, res) => {
             parameters: [
               {
                 type: "text",
-                text: variableValue || "Customer",
-                // FIX: Use the specific parameter name (e.g. 'name') required by your template
+                text: variableValue || "Valued Customer",
+                // Matches the parameter name (e.g., 'name') in Meta Manager
                 parameter_name: variableName || "name" 
               }
             ]
@@ -55,7 +65,7 @@ exports.sendMessageWorker = async (req, res) => {
       }
     };
 
-    // 4. Send the message to the WhatsApp API
+    // --- 5. SEND TO WHATSAPP API ---
     const response = await fetch(WHATSAPP_API_URL, {
       method: 'POST',
       headers: {
@@ -67,26 +77,36 @@ exports.sendMessageWorker = async (req, res) => {
 
     const result = await response.json();
 
-    // 5. Check if the message send was successful
+    // --- 6. HANDLE API ERRORS ---
     if (!response.ok) {
-      console.error('WhatsApp API Error:', JSON.stringify(result.error, null, 2));
+      console.error('Meta API Error:', JSON.stringify(result.error, null, 2));
+      
       if (campaignId) {
+        // Log the failure
+        await Message.create({
+          company: contact.company,
+          contact: contact._id,
+          campaign: campaignId,
+          status: 'failed',
+          body: `Meta Error: ${result.error?.message || 'Unknown rejection'}`,
+          direction: 'outbound'
+        });
+        
+        // Increment Failed count in Campaign
         await Campaign.findByIdAndUpdate(campaignId, { $inc: { failedCount: 1 } });
       }
-      // Return 200 to QStash even on Meta error to prevent infinite retries of bad data
-      return res.status(200).json({ success: false, error: result.error.message });
+      
+      // Return 200 to QStash to acknowledge receipt and prevent infinite retries
+      return res.status(200).json({ success: false, error: result.error?.message });
     }
 
-    // 6. Success
-    const messageId = result.messages[0].id;
-    console.log(`Message sent successfully to: ${contact.phone}`);
+    // --- 7. HANDLE SUCCESS ---
+    const messageId = result.messages[0].id; // The 'wamid'
+    console.log(`Successfully sent to: ${contact.phone}`);
 
-    // 7. Save Outbound Message Log
     if (campaignId) {
-      const company = await Company.findOne({ numberId: companyNumberId });
-      
+      // Create the outbound message log
       const newMessage = new Message({
-        company: company ? company._id : null,
         contact: contact._id,
         campaign: campaignId,
         waMessageId: messageId,
@@ -96,7 +116,7 @@ exports.sendMessageWorker = async (req, res) => {
       });
       await newMessage.save();
       
-      // Update Campaign Stats (Increment Sent Count)
+      // Increment successful Sent count in Campaign
       await Campaign.findByIdAndUpdate(campaignId, { $inc: { sentCount: 1 } });
     }
 
@@ -104,77 +124,59 @@ exports.sendMessageWorker = async (req, res) => {
 
   } catch (error) {
     console.error('Worker Server Error:', error.message);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, error: 'Internal Worker Error' });
   }
 };
 
 
-// ---
-// --- WEBHOOK FUNCTIONS (Preserved) ---
-// ---
-
-// @desc    Verify Webhook
+// --- WEBHOOK LOGIC: Verify Webhook ---
 exports.verifyWebhook = (req, res) => {
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode && token) {
-    if (mode === "subscribe" && token === verifyToken) {
-      res.status(200).send(challenge);
-    } else {
-      res.sendStatus(403);
-    }
+  if (mode && token === verifyToken) {
+    res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 };
 
 
-// @desc    Handle Incoming Data
+// --- WEBHOOK LOGIC: Handle Events (Status Updates & Replies) ---
 exports.handleWebhook = async (req, res) => {
   try {
     const body = req.body;
     if (body.object === "whatsapp_business_account") {
-      if (body.entry && body.entry.length > 0) {
-        body.entry.forEach((entry) => {
-          if (entry.changes && entry.changes.length > 0) {
-            const change = entry.changes[0];
-            if (change.value) {
-              const value = change.value;
+      if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value) {
+        const value = body.entry[0].changes[0].value;
 
-              if (value.messages) {
-                const message = value.messages[0];
-                if (message.type === "text") {
-                  saveIncomingMessage(value.metadata.phone_number_id, message);
-                }
-              }
+        // Case A: Status Updates (Sent -> Delivered -> Read)
+        if (value.statuses && value.statuses.length > 0) {
+          await updateCampaignStatus(value.statuses[0]);
+        }
 
-              if (value.statuses) {
-                const statusUpdate = value.statuses[0];
-                updateCampaignStatus(statusUpdate);
-              }
-            }
-          }
-        });
+        // Case B: Incoming Messages (Replies)
+        if (value.messages && value.messages.length > 0) {
+          await saveIncomingMessage(value.metadata.phone_number_id, value.messages[0]);
+        }
       }
       res.status(200).send("EVENT_RECEIVED");
     } else {
       res.sendStatus(404);
     }
   } catch (err) {
-    console.error("Error in handleWebhook:", err.message);
-    res.status(500).send("Internal Server Error");
+    console.error("Webhook Handler Error:", err.message);
+    res.status(200).send("EVENT_RECEIVED"); // Meta expects 200
   }
 };
 
 
-// --- HELPER FUNCTIONS ---
-
-async function saveIncomingMessage(companyNumberId, message) {
+// --- HELPER: Save Inbound Replies ---
+async function saveIncomingMessage(phoneId, message) {
   try {
-    const company = await Company.findOne({ numberId: companyNumberId });
+    const company = await Company.findOne({ numberId: phoneId });
     if (!company) return;
 
     const contact = await Contact.findOne({ phone: message.from, company: company._id });
@@ -183,58 +185,44 @@ async function saveIncomingMessage(companyNumberId, message) {
     const existingMessage = await Message.findOne({ waMessageId: message.id });
     if (existingMessage) return;
     
-    const newMessage = new Message({
+    await Message.create({
       company: company._id,
       contact: contact._id,
       waMessageId: message.id,
-      body: message.text.body,
+      body: message.text?.body || "[Non-text message]",
       direction: 'inbound',
       isRead: false 
     });
-    await newMessage.save();
-
+    console.log(`New reply saved from ${message.from}`);
   } catch (error) {
     console.error("Error saving incoming message:", error);
   }
 }
 
+
+// --- HELPER: Real-time Analytics Tracking ---
 async function updateCampaignStatus(statusUpdate) {
   try {
     const wamid = statusUpdate.id;
     const status = statusUpdate.status; 
 
-    // 1. Find message
     const message = await Message.findOne({ waMessageId: wamid });
-    if (!message) return;
+    if (!message || !message.campaign) return;
     
     const oldStatus = message.status;
 
-    // 2. Update message status
+    // Status logic: Only update if the new status is a step forward
     if (oldStatus === 'sent' && (status === 'delivered' || status === 'read')) {
       message.status = status;
+      await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
     }
+
     if (oldStatus === 'delivered' && status === 'read') {
       message.status = status;
-    }
-    
-    // 3. Update Campaign Analytics
-    if (message.campaign) {
-        if (status === 'delivered' && oldStatus === 'sent') {
-            await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
-        }
-        
-        if (status === 'read' && oldStatus !== 'read') {
-            await Campaign.findByIdAndUpdate(message.campaign, { $inc: { readCount: 1 } });
-            
-            // Implicit delivery if read happens fast
-            if (oldStatus === 'sent') {
-              await Campaign.findByIdAndUpdate(message.campaign, { $inc: { deliveredCount: 1 } });
-            }
-        }
+      await Campaign.findByIdAndUpdate(message.campaign, { $inc: { readCount: 1 } });
     }
 
     await message.save();
-
   } catch (error) {
     console.error("Error updating campaign status:", error);
   }
