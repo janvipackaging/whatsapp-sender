@@ -12,7 +12,10 @@ const qstashClient = new Client({
   token: process.env.QSTASH_TOKEN,
 });
 
-// --- HELPER: Clean Phone Number for Meta API ---
+/**
+ * Clean Phone Number for Meta API
+ * Removes all non-digits. Adds 91 if it's a 10-digit number.
+ */
 function cleanPhoneForMeta(phone) {
   if (!phone) return "";
   let cleaned = String(phone).replace(/\D/g, ''); 
@@ -27,21 +30,17 @@ exports.getCampaignPage = async (req, res) => {
     const companies = await Company.find();
     const segments = await Segment.find();
     const templates = await Template.find(); 
-
-    res.render('campaigns', {
-      user: req.user,
-      companies: companies,
-      segments: segments,
-      templates: templates
-    });
-
+    res.render('campaigns', { user: req.user, companies, segments, templates });
   } catch (error) {
     console.error('Error fetching data for campaign page:', error);
     res.status(500).send('Error loading page.');
   }
 };
 
-// @desc    Start sending a new bulk message campaign
+/**
+ * Start sending a new bulk message campaign
+ * OPTIMIZED: Uses batching (50 at a time) to prevent Vercel Function Timeouts.
+ */
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateId, name } = req.body; 
 
@@ -53,7 +52,6 @@ exports.startCampaign = async (req, res) => {
   try {
     const company = await Company.findById(companyId);
     const template = await Template.findById(templateId);
-
     if (!company || !template) {
       req.flash('error_msg', 'Company or Template not found.');
       return res.redirect('/campaigns');
@@ -68,10 +66,10 @@ exports.startCampaign = async (req, res) => {
     }
     
     // --- BLOCKLIST & DUPLICATE CHECK ---
-    const blockedNumbersDocs = await Blocklist.find({ company: companyId });
-    const blockedPhones = new Set(blockedNumbersDocs.map(doc => doc.phone));
+    const blockedDocs = await Blocklist.find({ company: companyId });
+    const blockedPhones = new Set(blockedDocs.map(doc => doc.phone));
     const uniquePhonesInThisRun = new Set();
-    let contactsToSend = [];
+    const contactsToSend = [];
     
     segmentContacts.forEach(contact => {
         const cleanedPhone = cleanPhoneForMeta(contact.phone);
@@ -82,10 +80,11 @@ exports.startCampaign = async (req, res) => {
     });
 
     if (contactsToSend.length === 0) {
-      req.flash('error_msg', 'No unique/valid contacts available to send.');
+      req.flash('error_msg', 'No unique or non-blocked contacts available.');
       return res.redirect('/campaigns');
     }
 
+    // Create Campaign Record
     const newCampaign = new Campaign({
       name: name || template.name, 
       company: companyId,
@@ -101,48 +100,49 @@ exports.startCampaign = async (req, res) => {
     const phoneId = company.phoneNumberId || company.numberId;
 
     // --- SMART VARIABLE DETECTION ---
-    // Your Meta UI shows {{name}}. We must send the key "name".
+    // Match the {{name}} in your Meta Manager
     let varKey = template.variable1 || "name";
     if (templateName.toLowerCase().includes('calculator')) {
-        varKey = "name"; // Force "name" for this specific template
+        varKey = "name"; 
     }
 
-    let jobsAdded = 0;
-    for (const contact of contactsToSend) { 
-      const cleanedTo = cleanPhoneForMeta(contact.phone);
+    // --- BATCH PROCESSING (Fixes Server Error Timeout) ---
+    // Send 50 contacts to QStash in parallel at a time
+    const batchSize = 50;
+    for (let i = 0; i < contactsToSend.length; i += batchSize) {
+      const batch = contactsToSend.slice(i, i + batchSize);
       
-      const jobData = {
-        contact: { ...contact.toObject(), phone: cleanedTo },
-        templateName: templateName, 
-        companyToken: token,
-        companyNumberId: phoneId,
-        campaignId: newCampaign._id,
-        // We pass the data so the worker has everything it needs to succeed
-        variableValue: contact.name || 'Customer',
-        variableName: varKey,
-        apiVersion: "v17.0" // Force the version that worked in your script
-      };
-
-      await qstashClient.publishJSON({
-        url: destinationUrl,
-        body: jobData,
-        retries: 3
-      });
-      jobsAdded++;
+      await Promise.all(batch.map(async (contact) => {
+        const cleanedTo = cleanPhoneForMeta(contact.phone);
+        return qstashClient.publishJSON({
+          url: destinationUrl,
+          body: {
+            contact: { ...contact.toObject(), phone: cleanedTo },
+            templateName: templateName, 
+            companyToken: token,
+            companyNumberId: phoneId,
+            campaignId: newCampaign._id,
+            variableValue: contact.name || 'Customer',
+            variableName: varKey,
+            apiVersion: "v17.0" // Version verified by your PowerShell script
+          },
+          retries: 3
+        });
+      }));
     }
 
-    req.flash('success_msg', `Campaign Started! ${jobsAdded} unique messages queued.`);
+    req.flash('success_msg', `Campaign Started! ${contactsToSend.length} unique messages queued.`);
     res.redirect('/reports');
 
   } catch (error) {
-    console.error('Error starting campaign:', error);
-    req.flash('error_msg', 'Server Error starting campaign.');
+    console.error('Campaign Error:', error);
+    req.flash('error_msg', 'Server Error starting campaign. The process may be too large for current settings.');
     res.redirect('/campaigns');
   }
 };
 
 
-// --- TEST SENDER (Matches PowerShell Configuration) ---
+// --- TEST SENDER (Matches PowerShell Configuration exactly) ---
 exports.sendTestMessage = async (req, res) => {
   try {
     const { companyId, templateId, phone } = req.body;
@@ -171,8 +171,6 @@ exports.sendTestMessage = async (req, res) => {
         let components = [];
         if (mode === 'named_ui') {
             components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer", parameter_name: "name" }] }];
-        } else if (mode === 'named_db') {
-            components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer", parameter_name: template.variable1 || "customer_name" }] }];
         } else if (mode === 'standard') {
             components = [{ type: "body", parameters: [{ type: "text", text: "Valued Customer" }] }];
         }
@@ -198,16 +196,16 @@ exports.sendTestMessage = async (req, res) => {
 
     // Attempt Waterfall
     let result = await attemptSend('named_ui');
-    if (!result.error) return success(req, res, targetPhone);
+    if (result.error) {
+        result = await attemptSend('standard');
+    }
 
-    result = await attemptSend('named_db');
-    if (!result.error) return success(req, res, targetPhone);
-
-    result = await attemptSend('standard');
-    if (!result.error) return success(req, res, targetPhone);
-
-    req.flash('error_msg', `Meta Error: ${result.error.message}`);
-    return res.redirect('/campaigns');
+    if (result.error) {
+        req.flash('error_msg', `Meta Error: ${result.error.message}`);
+    } else {
+        req.flash('success_msg', `Test message sent to ${targetPhone} successfully!`);
+    }
+    res.redirect('/campaigns');
 
   } catch (error) {
     console.error('Server Error:', error);
@@ -215,8 +213,3 @@ exports.sendTestMessage = async (req, res) => {
     res.redirect('/campaigns');
   }
 };
-
-function success(req, res, phone) {
-    req.flash('success_msg', `Test message sent to ${phone} successfully!`);
-    res.redirect('/campaigns');
-}
