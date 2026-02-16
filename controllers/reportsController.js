@@ -1,23 +1,47 @@
 const Campaign = require('../models/Campaign');
+const Message = require('../models/Message');
 
-// @desc    Show the main analytics dashboard page
+// @desc    Show all campaign reports
 exports.getReportsPage = async (req, res) => {
   try {
-    // 1. Find all campaigns in the database
-    // 2. Populate 'company' and 'segment' to get their names
-    // 3. Sort by 'createdAt: -1' to show the newest campaigns first
-    const campaigns = await Campaign.find()
+    // Show only user's company campaigns unless admin
+    const query = req.user.role === 'admin' ? {} : { company: req.user.company };
+    
+    const campaigns = await Campaign.find(query)
       .populate('company', 'name')
       .populate('segment', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // 3. Render the new EJS view and pass the campaign data
     res.render('reports', {
-      campaigns: campaigns
+      user: req.user,
+      campaigns,
+      success_msg: req.flash('success_msg'),
+      error_msg: req.flash('error_msg')
     });
+  } catch (err) {
+    console.error('Error fetching reports:', err);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @desc    Delete a campaign and its associated message logs
+exports.deleteCampaign = async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+
+    // 1. Delete all messages associated with this campaign
+    await Message.deleteMany({ campaign: campaignId });
+
+    // 2. Delete the campaign record itself
+    await Campaign.findByIdAndDelete(campaignId);
+
+    req.flash('success_msg', 'Campaign report and associated logs deleted successfully.');
+    res.redirect('/reports');
     
-  } catch (error) {
-    console.error('Error fetching reports page:', error);
-    res.status(500).send('Error loading page');
+  } catch (err) {
+    console.error('Error deleting campaign:', err);
+    req.flash('error_msg', 'Error deleting campaign report.');
+    res.redirect('/reports');
   }
 };

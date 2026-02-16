@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-
-// We will create this controller file in the next step
 const reportsController = require('../controllers/reportsController');
 
-// --- Define Routes ---
-
-// @route   GET /reports/
-// @desc    Show the main analytics dashboard page
+// @route   GET /reports
+// @desc    Show all reports
 router.get('/', reportsController.getReportsPage);
+
+// @route   POST /reports/delete/:id
+// @desc    Delete a junk campaign report
+router.post('/delete/:id', reportsController.deleteCampaign);
 
 module.exports = router;
