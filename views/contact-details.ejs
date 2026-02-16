@@ -283,7 +283,18 @@
           <% if (activityLog && activityLog.length > 0) { %>
             <% activityLog.forEach(function(activity) { %>
               <li class="activity-item">
-                <span><%= new Date(activity.date).toLocaleString() %></span>
+                <span>
+                  <%= new Date(activity.date).toLocaleString('en-IN', { 
+                      timeZone: 'Asia/Kolkata', 
+                      hour12: true,
+                      day: 'numeric',
+                      month: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                  }) %>
+                </span>
                 <strong><%= activity.body %></strong>
               </li>
             <% }); %>
