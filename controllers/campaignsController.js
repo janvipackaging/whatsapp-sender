@@ -1,3 +1,4 @@
+const mongoose = require('mongoose'); // Added for ObjectId casting
 const Company = require('../models/Company');
 const Segment = require('../models/Segment');
 const Contact = require('../models/Contact');
@@ -25,7 +26,6 @@ function cleanPhoneForMeta(phone) {
 // @desc    Show the "Create New Campaign" page
 exports.getCampaignPage = async (req, res) => {
   try {
-    // Optimization: Parallel fetching and lean objects for dashboard performance
     const [companies, segments, templates] = await Promise.all([
       Company.find().lean(),
       Segment.find().lean(),
@@ -40,7 +40,7 @@ exports.getCampaignPage = async (req, res) => {
 
 /**
  * Start sending a new bulk message campaign
- * FIX: Reduced chunk size to 20 to prevent MongoDB SSL Connection Pool clearing.
+ * UPGRADED: Added strict segment filtering and debug logging to prevent cross-segment sends.
  */
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateId, name } = req.body; 
@@ -51,20 +51,27 @@ exports.startCampaign = async (req, res) => {
   }
 
   try {
-    // 1. Fetch required data with .lean() for speed
+    // 1. Fetch data with STRICT Segment Filtering
+    // We cast segmentId to a proper ObjectId to ensure MongoDB matches precisely within the array
     const [company, template, contacts] = await Promise.all([
       Company.findById(companyId).lean(),
       Template.findById(templateId).lean(),
-      Contact.find({ company: companyId, segments: segmentId }).lean()
+      Contact.find({ 
+        company: companyId, 
+        segments: { $in: [new mongoose.Types.ObjectId(segmentId)] } 
+      }).lean()
     ]);
     
+    // CRITICAL: Verify the count in your Vercel logs
+    console.log(`[CAMPAIGN START] User selected Segment: ${segmentId} | Contacts found: ${contacts.length}`);
+
     if (!company || !template) {
       req.flash('error_msg', 'Selected Company or Template not found.');
       return res.redirect('/campaigns');
     }
 
     if (!contacts || contacts.length === 0) {
-       req.flash('error_msg', 'No contacts found in this segment.');
+       req.flash('error_msg', 'No contacts found in the selected segment.');
        return res.redirect('/campaigns');
     }
 
@@ -88,7 +95,6 @@ exports.startCampaign = async (req, res) => {
     const destinationUrl = `${protocol}://${host}/api/send-message`;
 
     // 4. Batch dispatch to QStash
-    // REDUCED: Chunk size 20 is the "Sweet Spot" for MongoDB Atlas Free/Basic tiers
     const chunkSize = 20;
     for (let i = 0; i < contacts.length; i += chunkSize) {
       const chunk = contacts.slice(i, i + chunkSize);
@@ -111,7 +117,7 @@ exports.startCampaign = async (req, res) => {
       }));
     }
 
-    req.flash('success_msg', `Campaign "${campaignName}" started! ${contacts.length} messages queued successfully.`);
+    req.flash('success_msg', `Campaign "${campaignName}" started for ${contacts.length} contacts!`);
     res.redirect('/reports');
 
   } catch (error) {

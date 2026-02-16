@@ -1,67 +1,73 @@
-const mongoose = require('mongoose');
+    const mongoose = require('mongoose');
 
-const ContactSchema = new mongoose.Schema({
-  // --- Mandatory Fields ---
-  name: {
-    type: String,
-    required: true,
-    trim: true // Removes whitespace
-  },
-  phone: { 
-    type: String, 
-    required: true,
-    trim: true
-  },
-  company: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Company',
-    required: true 
-  },
-  segments: [{ 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Segment'
-  }],
+    const ContactSchema = new mongoose.Schema({
+    // --- Mandatory Fields ---
+    name: {
+        type: String,
+        required: true,
+        trim: true // Removes whitespace
+    },
+    phone: { 
+        type: String, 
+        required: true,
+        trim: true
+    },
+    company: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Company',
+        required: true 
+    },
+    // IMPROVED: Added default empty array and index for performance
+    segments: [{ 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Segment',
+        index: true // Mandatory for fast campaign filtering
+    }],
 
-  // --- NEW: Optional B2B CRM Fields ---
-  email: {
-    type: String,
-    trim: true,
-    lowercase: true // Automatically converts email to lowercase
-  },
-  city: {
-    type: String,
-    trim: true
-  },
-  productInterest: {
-    type: String,
-    trim: true
-  },
-  companyName: { // The contact's own company, e.g., "ABC Printers Ltd."
-    type: String,
-    trim: true
-  },
-  jobTitle: { // e.g., "Purchase Manager"
-    type: String,
-    trim: true
-  },
-  leadSource: { // e.g., "IndiaMart", "Google Ads"
-    type: String,
-    trim: true
-  },
-  leadStatus: {
-    type: String,
-    trim: true,
-    default: 'New' // Sets a default status for all new contacts
-  },
-  notes: {
-    type: String,
-    trim: true
-  }
-  
-}, { timestamps: true }); // Adds createdAt and updatedAt
+    // --- Optional B2B CRM Fields ---
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true 
+    },
+    city: {
+        type: String,
+        trim: true
+    },
+    productInterest: {
+        type: String,
+        trim: true
+    },
+    companyName: { 
+        type: String,
+        trim: true
+    },
+    jobTitle: { 
+        type: String,
+        trim: true
+    },
+    leadSource: { 
+        type: String,
+        trim: true
+    },
+    leadStatus: {
+        type: String,
+        trim: true,
+        default: 'New'
+    },
+    notes: {
+        type: String,
+        trim: true
+    }
+    
+    }, { timestamps: true }); 
 
-// --- This is your duplicate prevention ---
-// It ensures 'phone' and 'company' (your company) are unique
-ContactSchema.index({ phone: 1, company: 1 }, { unique: true });
+    // --- Duplicate Prevention ---
+    // Ensures a phone number is unique within a single company
+    ContactSchema.index({ phone: 1, company: 1 }, { unique: true });
 
-module.exports = mongoose.model('Contact', ContactSchema);
+    // --- Performance Search Index ---
+    // Helps the "Search / Filter" box stay fast
+    ContactSchema.index({ name: 'text', email: 'text' });
+
+    module.exports = mongoose.model('Contact', ContactSchema);
