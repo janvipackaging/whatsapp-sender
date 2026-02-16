@@ -40,7 +40,7 @@ exports.getCampaignPage = async (req, res) => {
 
 /**
  * Start sending a new bulk message campaign
- * UPGRADED: Added strict segment filtering and debug logging to prevent cross-segment sends.
+ * FIXED: Added deduplication logic and QStash Deduplication IDs to prevent double sending.
  */
 exports.startCampaign = async (req, res) => {
   const { companyId, segmentId, templateId, name } = req.body; 
@@ -52,8 +52,7 @@ exports.startCampaign = async (req, res) => {
 
   try {
     // 1. Fetch data with STRICT Segment Filtering
-    // We cast segmentId to a proper ObjectId and also fetch the Segment object for clear logging
-    const [company, template, segment, contacts] = await Promise.all([
+    const [company, template, segment, rawContacts] = await Promise.all([
       Company.findById(companyId).lean(),
       Template.findById(templateId).lean(),
       Segment.findById(segmentId).lean(),
@@ -63,16 +62,27 @@ exports.startCampaign = async (req, res) => {
       }).lean()
     ]);
     
-    // CRITICAL DEBUG LOG: Verify this in Vercel to see exactly what the user selected
-    console.log(`[CAMPAIGN START] Target Segment: "${segment ? segment.name : 'Unknown'}" | Contacts found: ${contacts.length}`);
-
     if (!company || !template) {
       req.flash('error_msg', 'Selected Company or Template not found.');
       return res.redirect('/campaigns');
     }
 
-    if (!contacts || contacts.length === 0) {
-       req.flash('error_msg', `No contacts found in segment: ${segment ? segment.name : 'Selected Segment'}`);
+    // --- SAFETY LOCK 1: Deduplicate contacts by Phone Number ---
+    const seenPhones = new Set();
+    const contacts = [];
+    
+    for (const contact of rawContacts) {
+      const cleanP = cleanPhoneForMeta(contact.phone);
+      if (!seenPhones.has(cleanP)) {
+        seenPhones.add(cleanP);
+        contacts.push(contact);
+      }
+    }
+
+    console.log(`[CAMPAIGN START] Target: "${segment?.name}" | Raw: ${rawContacts.length} | Unique: ${contacts.length}`);
+
+    if (contacts.length === 0) {
+       req.flash('error_msg', `No unique contacts found in segment: ${segment ? segment.name : 'Selected Segment'}`);
        return res.redirect('/campaigns');
     }
 
@@ -101,10 +111,15 @@ exports.startCampaign = async (req, res) => {
       const chunk = contacts.slice(i, i + chunkSize);
       
       await Promise.all(chunk.map(contact => {
+        const cleanedPhone = cleanPhoneForMeta(contact.phone);
+        
         return qstash.publishJSON({
           url: destinationUrl,
+          // --- SAFETY LOCK 2: QStash Deduplication ID ---
+          // This prevents QStash from ever processing the same contact for the same campaign twice.
+          deduplicationId: `campaign-${newCampaign._id}-contact-${contact._id}`,
           body: {
-            contact: { ...contact, phone: cleanPhoneForMeta(contact.phone) },
+            contact: { ...contact, phone: cleanedPhone },
             templateName: tplCodeName, 
             companyToken: company.whatsappToken || company.permanentToken,
             companyNumberId: company.numberId || company.phoneNumberId,
@@ -113,12 +128,12 @@ exports.startCampaign = async (req, res) => {
             variableName: template.variable1 || 'name',
             apiVersion: "v17.0"
           },
-          retries: 3
+          retries: 2 // Reduced retries to prevent long-running loops
         });
       }));
     }
 
-    req.flash('success_msg', `Campaign "${campaignName}" started for ${contacts.length} contacts!`);
+    req.flash('success_msg', `Campaign "${campaignName}" started for ${contacts.length} unique contacts!`);
     res.redirect('/reports');
 
   } catch (error) {
