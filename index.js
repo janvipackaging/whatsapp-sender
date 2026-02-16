@@ -35,11 +35,14 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ 
     mongoUrl: process.env.MONGO_URI,
-    ttl: 14 * 24 * 60 * 60 
+    ttl: 14 * 24 * 60 * 60,
+    autoRemove: 'native', // Optimization: uses MongoDB's TTL index for session cleanup
+    touchAfter: 24 * 3600 // Only update session once per day unless data changes (saves DB writes)
   }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 24 * 14
+    maxAge: 1000 * 60 * 60 * 24 * 14,
+    sameSite: 'lax'
   }
 }));
 
@@ -64,32 +67,40 @@ const Contact = require('./models/Contact');
 const Campaign = require('./models/Campaign');
 const Message = require('./models/Message');
 
-// Dashboard Route (Corrected to provide all variables expected by index.ejs)
+// Dashboard Route (Optimized with .lean() to reduce DB overhead)
 app.get('/', isAuthenticated, async (req, res) => {
   try {
-    // 1. Basic Stats
-    const totalContacts = await Contact.countDocuments();
-    const totalCampaigns = await Campaign.countDocuments();
-    const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
+    // 1. Basic Stats - Using Promise.all for parallel execution
+    const [totalContacts, totalCampaigns, totalUnread] = await Promise.all([
+      Contact.countDocuments().lean(),
+      Campaign.countDocuments().lean(),
+      Message.countDocuments({ isRead: false, direction: 'inbound' }).lean()
+    ]);
 
     // 2. Pending Users (Admin Only)
     let pendingUsers = [];
     if (req.user.role === 'admin') {
-      pendingUsers = await User.find({ isApproved: false }).populate('company');
+      pendingUsers = await User.find({ isApproved: false }).populate('company').lean();
     }
 
     // 3. Recent Incoming Messages
     const recentMessages = await Message.find({ direction: 'inbound' })
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('contact');
+      .populate('contact')
+      .lean();
 
     // 4. Last Campaign Summary
-    const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 }).populate('segment');
+    const lastCampaign = await Campaign.findOne()
+      .sort({ createdAt: -1 })
+      .populate('segment')
+      .lean();
 
     // 5. Data for Quick-Add Form
-    const companies = await Company.find().lean();
-    const segments = await Segment.find().lean();
+    const [companies, segments] = await Promise.all([
+      Company.find().lean(),
+      Segment.find().lean()
+    ]);
 
     res.render('index', { 
       totalContacts, 
@@ -103,7 +114,11 @@ app.get('/', isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     console.error("Dashboard Load Error:", err);
-    res.status(500).send("Error loading Dashboard: " + err.message);
+    // Provide a fallback or generic error message if DB pool is cleared
+    res.status(500).render('error', { 
+      message: "The dashboard is temporarily unavailable due to high server load. Please refresh in a moment.",
+      error: process.env.NODE_ENV === 'development' ? err : {}
+    });
   }
 });
 
