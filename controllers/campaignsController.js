@@ -52,18 +52,19 @@ exports.startCampaign = async (req, res) => {
 
   try {
     // 1. Fetch data with STRICT Segment Filtering
-    // We cast segmentId to a proper ObjectId to ensure MongoDB matches precisely within the array
-    const [company, template, contacts] = await Promise.all([
+    // We cast segmentId to a proper ObjectId and also fetch the Segment object for clear logging
+    const [company, template, segment, contacts] = await Promise.all([
       Company.findById(companyId).lean(),
       Template.findById(templateId).lean(),
+      Segment.findById(segmentId).lean(),
       Contact.find({ 
         company: companyId, 
         segments: { $in: [new mongoose.Types.ObjectId(segmentId)] } 
       }).lean()
     ]);
     
-    // CRITICAL: Verify the count in your Vercel logs
-    console.log(`[CAMPAIGN START] User selected Segment: ${segmentId} | Contacts found: ${contacts.length}`);
+    // CRITICAL DEBUG LOG: Verify this in Vercel to see exactly what the user selected
+    console.log(`[CAMPAIGN START] Target Segment: "${segment ? segment.name : 'Unknown'}" | Contacts found: ${contacts.length}`);
 
     if (!company || !template) {
       req.flash('error_msg', 'Selected Company or Template not found.');
@@ -71,7 +72,7 @@ exports.startCampaign = async (req, res) => {
     }
 
     if (!contacts || contacts.length === 0) {
-       req.flash('error_msg', 'No contacts found in the selected segment.');
+       req.flash('error_msg', `No contacts found in segment: ${segment ? segment.name : 'Selected Segment'}`);
        return res.redirect('/campaigns');
     }
 
