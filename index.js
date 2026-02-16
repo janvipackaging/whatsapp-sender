@@ -56,19 +56,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// Dashboard Route (Simplified)
+// Models needed for Dashboard
+const User = require('./models/User');
+const Company = require('./models/Company');
+const Segment = require('./models/Segment');
 const Contact = require('./models/Contact');
 const Campaign = require('./models/Campaign');
 const Message = require('./models/Message');
 
+// Dashboard Route (Corrected to provide all variables expected by index.ejs)
 app.get('/', isAuthenticated, async (req, res) => {
   try {
+    // 1. Basic Stats
     const totalContacts = await Contact.countDocuments();
     const totalCampaigns = await Campaign.countDocuments();
     const totalUnread = await Message.countDocuments({ isRead: false, direction: 'inbound' });
-    res.render('index', { totalContacts, totalCampaigns, totalUnread });
+
+    // 2. Pending Users (Admin Only)
+    let pendingUsers = [];
+    if (req.user.role === 'admin') {
+      pendingUsers = await User.find({ isApproved: false }).populate('company');
+    }
+
+    // 3. Recent Incoming Messages
+    const recentMessages = await Message.find({ direction: 'inbound' })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('contact');
+
+    // 4. Last Campaign Summary
+    const lastCampaign = await Campaign.findOne().sort({ createdAt: -1 }).populate('segment');
+
+    // 5. Data for Quick-Add Form
+    const companies = await Company.find().lean();
+    const segments = await Segment.find().lean();
+
+    res.render('index', { 
+      totalContacts, 
+      totalCampaigns, 
+      totalUnread,
+      pendingUsers,
+      recentMessages,
+      lastCampaign,
+      companies,
+      segments
+    });
   } catch (err) {
-    res.status(500).send("Error loading Dashboard");
+    console.error("Dashboard Load Error:", err);
+    res.status(500).send("Error loading Dashboard: " + err.message);
   }
 });
 
@@ -76,9 +111,12 @@ app.get('/', isAuthenticated, async (req, res) => {
 app.use('/contacts', isAuthenticated, require('./routes/contacts'));
 app.use('/campaigns', isAuthenticated, require('./routes/campaigns')); 
 app.use('/templates', isAuthenticated, require('./routes/templates')); 
+app.use('/segments', isAuthenticated, require('./routes/segments'));
 app.use('/reports', isAuthenticated, require('./routes/reports')); 
 app.use('/inbox', isAuthenticated, require('./routes/inbox')); 
+app.use('/blocklist', isAuthenticated, require('./routes/blocklist'));
 app.use('/users', require('./routes/users'));
+app.use('/companies', isAuthenticated, isAdmin, require('./routes/companies'));
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
